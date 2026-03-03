@@ -43,6 +43,7 @@ interface OfficialProvider {
   api_type: string;
   suggested_models: SuggestedModel[];
   requires_api_key: boolean;
+  default_api_key: string | null;
   docs_url: string | null;
 }
 
@@ -105,13 +106,13 @@ function ProviderDialog({ officialProviders, onClose, onSave, editingProvider }:
   const [step, setStep] = useState<'select' | 'configure'>(isEditing ? 'configure' : 'select');
   const [selectedOfficial, setSelectedOfficial] = useState<OfficialProvider | null>(() => {
     if (editingProvider) {
-      return officialProviders.find(p => 
+      return officialProviders.find(p =>
         editingProvider.name.includes(p.id) || p.id === editingProvider.name
       ) || null;
     }
     return null;
   });
-  
+
   // Configuration form
   const [providerName, setProviderName] = useState(editingProvider?.name || '');
   const [baseUrl, setBaseUrl] = useState(editingProvider?.base_url || '');
@@ -135,6 +136,12 @@ function ProviderDialog({ officialProviders, onClose, onSave, editingProvider }:
   const [formError, setFormError] = useState<string | null>(null);
   const [showCustomUrlWarning, setShowCustomUrlWarning] = useState(false);
 
+  // Ollama specific states
+  const [isOllamaInstalled, setIsOllamaInstalled] = useState<boolean | null>(null);
+  const [installedOllamaModels, setInstalledOllamaModels] = useState<string[]>([]);
+  const [installingOllamaModel, setInstallingOllamaModel] = useState(false);
+  const [ollamaTargetModel, setOllamaTargetModel] = useState('');
+
   // Check if using official Provider name with custom URL
   const isCustomUrlWithOfficialName = (() => {
     const official = officialProviders.find(p => p.id === providerName);
@@ -143,12 +150,22 @@ function ProviderDialog({ officialProviders, onClose, onSave, editingProvider }:
     }
     return false;
   })();
-  
+
+  useEffect(() => {
+    if (providerName === 'ollama') {
+      import('../../lib/tauri').then(({ api }) => {
+        api.checkOllamaInstalled().then(setIsOllamaInstalled).catch(console.error);
+        api.getOllamaModels().then(setInstalledOllamaModels).catch(console.error);
+      });
+    }
+  }, [providerName]);
+
   const handleSelectOfficial = (provider: OfficialProvider) => {
     setSelectedOfficial(provider);
     setProviderName(provider.id);
     setBaseUrl(provider.default_base_url || '');
     setApiType(provider.api_type);
+    setApiKey(provider.default_api_key || '');
     // Pre-select recommended models
     const recommended = provider.suggested_models.filter(m => m.recommended).map(m => m.id);
     setSelectedModels(recommended.length > 0 ? recommended : [provider.suggested_models[0]?.id].filter(Boolean));
@@ -170,8 +187,8 @@ function ProviderDialog({ officialProviders, onClose, onSave, editingProvider }:
 
   const toggleModel = (modelId: string) => {
     setFormError(null);
-    setSelectedModels(prev => 
-      prev.includes(modelId) 
+    setSelectedModels(prev =>
+      prev.includes(modelId)
         ? prev.filter(id => id !== modelId)
         : [...prev, modelId]
     );
@@ -201,7 +218,7 @@ function ProviderDialog({ officialProviders, onClose, onSave, editingProvider }:
 
   const handleSave = async (forceOverride: boolean = false) => {
     setFormError(null);
-    
+
     if (!providerName || !baseUrl || selectedModels.length === 0) {
       setFormError('Please fill in complete Provider information and select at least one model');
       return;
@@ -212,7 +229,7 @@ function ProviderDialog({ officialProviders, onClose, onSave, editingProvider }:
       setShowCustomUrlWarning(true);
       return;
     }
-    
+
     setSaving(true);
     setShowCustomUrlWarning(false);
     try {
@@ -296,23 +313,23 @@ function ProviderDialog({ officialProviders, onClose, onSave, editingProvider }:
                   <h3 className="text-sm font-medium text-gray-400">Official Providers</h3>
                   <div className="grid grid-cols-2 gap-3">
                     {officialProviders.map(provider => (
-                <button
-                  key={provider.id}
+                      <button
+                        key={provider.id}
                         onClick={() => handleSelectOfficial(provider)}
                         className="flex items-center gap-3 p-4 rounded-xl bg-dark-700 border border-dark-500 hover:border-claw-500/50 hover:bg-dark-600 transition-all text-left group"
-                >
-                  <span className="text-2xl">{provider.icon}</span>
+                      >
+                        <span className="text-2xl">{provider.icon}</span>
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-white truncate">{provider.name}</p>
                           <p className="text-xs text-gray-500 truncate">
                             {provider.suggested_models.length} models
                           </p>
-                    </div>
+                        </div>
                         <ChevronRight size={16} className="text-gray-500 group-hover:text-claw-400 transition-colors" />
-                </button>
+                      </button>
                     ))}
-          </div>
-        </div>
+                  </div>
+                </div>
 
                 {/* Custom Provider */}
                 <div className="pt-4 border-t border-dark-600">
@@ -326,7 +343,7 @@ function ProviderDialog({ officialProviders, onClose, onSave, editingProvider }:
                 </div>
               </motion.div>
             ) : (
-          <motion.div
+              <motion.div
                 key="configure"
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -383,7 +400,7 @@ function ProviderDialog({ officialProviders, onClose, onSave, editingProvider }:
                   />
                 </div>
 
-              {/* API Key */}
+                {/* API Key */}
                 <div>
                   <label className="block text-sm text-gray-400 mb-2">
                     API Key
@@ -440,14 +457,14 @@ function ProviderDialog({ officialProviders, onClose, onSave, editingProvider }:
                 </div>
 
                 {/* Model Selection */}
-              <div>
-                <label className="block text-sm text-gray-400 mb-2">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">
                     Select Models
                     <span className="text-gray-600 text-xs ml-2">
                       ({selectedModels.length} selected)
                     </span>
                   </label>
-                  
+
                   {/* Preset Models */}
                   {selectedOfficial && (
                     <div className="space-y-2 mb-3">
@@ -486,8 +503,8 @@ function ProviderDialog({ officialProviders, onClose, onSave, editingProvider }:
 
                   {/* Custom Model Input */}
                   <div className="flex gap-2">
-                  <input
-                    type="text"
+                    <input
+                      type="text"
                       value={customModelId}
                       onChange={e => setCustomModelId(e.target.value)}
                       placeholder="Enter custom model ID"
@@ -522,6 +539,132 @@ function ProviderDialog({ officialProviders, onClose, onSave, editingProvider }:
                             </button>
                           </span>
                         ))}
+                    </div>
+                  )}
+
+                  {/* Ollama Setup Section */}
+                  {providerName === 'ollama' && (
+                    <div className="mt-4 p-4 bg-dark-700 border border-dark-500 rounded-xl space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-sm font-medium text-white flex items-center gap-2">
+                          <Server size={16} className="text-claw-400" />
+                          Ollama Setup
+                        </h4>
+                        {isOllamaInstalled === null ? (
+                          <span className="text-xs text-gray-500">Checking...</span>
+                        ) : isOllamaInstalled ? (
+                          <span className="text-xs text-green-400 flex items-center gap-1"><CheckCircle size={12} /> Installed</span>
+                        ) : (
+                          <span className="text-xs text-yellow-400 flex items-center gap-1"><XCircle size={12} /> Not installed</span>
+                        )}
+                      </div>
+
+                      {isOllamaInstalled === false && (
+                        <div className="text-sm text-gray-400 flex flex-col gap-2">
+                          <p>Ollama was not detected on your system. You'll need to install it to run models locally.</p>
+                          <a
+                            href="https://ollama.com/download"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn-primary py-2 text-center"
+                          >
+                            Install Ollama
+                          </a>
+                        </div>
+                      )}
+
+                      {isOllamaInstalled && (
+                        <>
+                          {installedOllamaModels.length > 0 && (
+                            <div className="space-y-2">
+                              <p className="text-xs text-gray-400">Detected Local Models:</p>
+                              <div className="flex flex-wrap gap-2">
+                                {installedOllamaModels.map(m => (
+                                  <button
+                                    key={m}
+                                    onClick={() => {
+                                      if (!selectedModels.includes(m)) {
+                                        setSelectedModels(prev => [...prev, m]);
+                                      }
+                                    }}
+                                    className={clsx(
+                                      "px-2 py-1 text-xs rounded-md border transition-colors",
+                                      selectedModels.includes(m)
+                                        ? "bg-claw-500/20 text-claw-300 border-claw-500/50"
+                                        : "bg-dark-600 border-dark-500 text-gray-300 hover:border-claw-500 hover:text-white"
+                                    )}
+                                  >
+                                    + {m}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="pt-2 border-t border-dark-600">
+                            <p className="text-xs text-gray-400 mb-2">Install a new model (e.g., qwen3.5:9b, llama3)</p>
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                value={ollamaTargetModel}
+                                onChange={e => setOllamaTargetModel(e.target.value)}
+                                placeholder="Model name"
+                                className="input-base flex-1 text-sm py-1.5"
+                                onKeyDown={async (e) => {
+                                  if (e.key === 'Enter' && ollamaTargetModel && !installingOllamaModel) {
+                                    setInstallingOllamaModel(true);
+                                    try {
+                                      const { api } = await import('../../lib/tauri');
+                                      await api.installOllamaModel(ollamaTargetModel);
+                                      const newModels = await api.getOllamaModels();
+                                      setInstalledOllamaModels(newModels);
+                                      if (!selectedModels.includes(ollamaTargetModel)) {
+                                        setSelectedModels(prev => [...prev, ollamaTargetModel]);
+                                      }
+                                      setOllamaTargetModel('');
+                                      aiLogger.info(`Successfully installed model ${ollamaTargetModel}`);
+                                    } catch (err) {
+                                      setFormError('Failed to install model: ' + String(err));
+                                    } finally {
+                                      setInstallingOllamaModel(false);
+                                    }
+                                  }
+                                }}
+                              />
+                              <button
+                                onClick={async () => {
+                                  if (!ollamaTargetModel) return;
+                                  setInstallingOllamaModel(true);
+                                  try {
+                                    const { api } = await import('../../lib/tauri');
+                                    await api.installOllamaModel(ollamaTargetModel);
+                                    const newModels = await api.getOllamaModels();
+                                    setInstalledOllamaModels(newModels);
+                                    if (!selectedModels.includes(ollamaTargetModel)) {
+                                      setSelectedModels(prev => [...prev, ollamaTargetModel]);
+                                    }
+                                    setOllamaTargetModel('');
+                                    aiLogger.info(`Successfully installed model ${ollamaTargetModel}`);
+                                  } catch (err) {
+                                    setFormError('Failed to install model: ' + String(err));
+                                  } finally {
+                                    setInstallingOllamaModel(false);
+                                  }
+                                }}
+                                disabled={!ollamaTargetModel || installingOllamaModel}
+                                className="btn-secondary px-3 py-1.5 text-sm whitespace-nowrap"
+                              >
+                                {installingOllamaModel ? <Loader2 size={14} className="animate-spin" /> : 'Pull Model'}
+                              </button>
+                            </div>
+                            {installingOllamaModel && (
+                              <p className="text-xs text-claw-400 mt-2 flex items-center gap-1 animate-pulse">
+                                <Loader2 size={12} className="animate-spin" /> Downloading model... this may take a few minutes depending on your internet connection and model size.
+                              </p>
+                            )}
+                          </div>
+                        </>
+                      )}
                     </div>
                   )}
                 </div>
@@ -592,7 +735,7 @@ function ProviderDialog({ officialProviders, onClose, onSave, editingProvider }:
               </motion.div>
             )}
           </AnimatePresence>
-              </div>
+        </div>
 
         {/* Footer Buttons */}
         <div className="px-6 py-4 border-t border-dark-600 flex justify-between">
@@ -736,7 +879,7 @@ function ProviderCard({ provider, officialProviders, onSetPrimary, onRefresh, on
                 {provider.models.map(model => (
                   <div
                     key={model.full_id}
-                      className={clsx(
+                    className={clsx(
                       'flex items-center justify-between p-3 rounded-lg border transition-all',
                       model.is_primary
                         ? 'bg-claw-500/10 border-claw-500/50'
@@ -747,7 +890,7 @@ function ProviderCard({ provider, officialProviders, onSetPrimary, onRefresh, on
                       <Cpu size={16} className={model.is_primary ? 'text-claw-400' : 'text-gray-500'} />
                       <div>
                         <p className={clsx(
-                            'text-sm font-medium',
+                          'text-sm font-medium',
                           model.is_primary ? 'text-white' : 'text-gray-300'
                         )}>
                           {model.name}
@@ -995,8 +1138,8 @@ export function AIConfig() {
               className="btn-secondary flex items-center gap-2"
             >
               {testing ? (
-                    <Loader2 size={16} className="animate-spin" />
-                  ) : (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
                 <Zap size={16} />
               )}
               Test Connection

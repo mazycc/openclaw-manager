@@ -572,6 +572,34 @@ pub async fn get_official_providers() -> Result<Vec<OfficialProvider>, String> {
                 },
             ],
         },
+        OfficialProvider {
+            id: "ollama".to_string(),
+            name: "Ollama (Local)".to_string(),
+            icon: "🦙".to_string(),
+            default_base_url: Some("http://127.0.0.1:11434/v1".to_string()),
+            api_type: "openai-completions".to_string(),
+            requires_api_key: false,
+            default_api_key: Some("ollama-local".to_string()),
+            docs_url: Some("https://github.com/ollama/ollama".to_string()),
+            suggested_models: vec![
+                SuggestedModel {
+                    id: "qwen2.5:7b".to_string(),
+                    name: "Qwen 2.5 (7B)".to_string(),
+                    description: Some("Run locally".to_string()),
+                    context_window: Some(32768),
+                    max_tokens: None,
+                    recommended: true,
+                },
+                SuggestedModel {
+                    id: "qwen3.5:9b".to_string(),
+                    name: "Qwen 3.5 (9B)".to_string(),
+                    description: Some("Run locally".to_string()),
+                    context_window: Some(32768),
+                    max_tokens: None,
+                    recommended: false,
+                },
+            ],
+        },
     ];
 
     info!(

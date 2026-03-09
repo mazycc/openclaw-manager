@@ -391,8 +391,9 @@ export function Setup({ onComplete, embedded = false }: SetupProps) {
           >
             <span className="text-4xl">🦞</span>
           </motion.div>
-          <h1 className="text-2xl font-bold text-white mb-2">OpenClaw Manager</h1>
+          <h1 className="text-2xl font-bold text-white mb-2">OpenClaw小白安装工具</h1>
           <p className="text-dark-400">Environment Detection & Setup Wizard</p>
+          <p className="text-xs text-dark-500 mt-2">微信：yunqi31 | 公众号：AI芯实战</p>
         </div>
 
         {/* Main card */}
@@ -405,7 +406,7 @@ export function Setup({ onComplete, embedded = false }: SetupProps) {
 
         {/* Version info */}
         <p className="text-center text-dark-500 text-xs mt-6">
-          OpenClaw Manager v0.0.5
+          OpenClaw小白安装工具 v0.0.19
         </p>
       </motion.div>
     </div>

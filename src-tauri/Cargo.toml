@@ -1,8 +1,8 @@
 [package]
 name = "openclaw-manager"
 version = "0.0.19"
-description = "OpenClaw Cross-Platform Manager"
-authors = ["OpenClaw Team"]
+description = "OpenClaw小白安装工具"
+authors = ["微信：yunqi31 | 公众号：AI芯实战"]
 edition = "2021"
 
 [build-dependencies]

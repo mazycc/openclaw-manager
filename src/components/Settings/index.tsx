@@ -352,6 +352,30 @@ export function Settings({ onEnvironmentChange }: SettingsProps) {
     <div className="h-full overflow-y-auto scroll-container pr-2 pb-20">
       <div className="max-w-3xl space-y-6 mx-auto">
 
+        <div className="bg-dark-700 rounded-2xl p-6 border border-claw-500/30">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 rounded-xl bg-claw-500/20 flex items-center justify-center">
+              <GitMerge size={20} className="text-claw-400" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-white">OpenClaw小白安装工具</h3>
+              <p className="text-xs text-gray-500">品牌与联系信息</p>
+            </div>
+            <span className="text-xs font-mono text-gray-500 bg-dark-600 px-2 py-1 rounded">v{appVersion}</span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="p-4 bg-dark-600 rounded-lg border border-dark-500">
+              <p className="text-xs text-gray-500 mb-1">微信</p>
+              <p className="text-sm font-medium text-white">yunqi31</p>
+            </div>
+            <div className="p-4 bg-dark-600 rounded-lg border border-dark-500">
+              <p className="text-xs text-gray-500 mb-1">公众号</p>
+              <p className="text-sm font-medium text-white">AI芯实战</p>
+            </div>
+          </div>
+        </div>
+
         {/* Compaction & Memory */}
         <div className="bg-dark-700 rounded-2xl p-6 border border-dark-500">
           <div className="flex items-center gap-3 mb-6">
@@ -785,7 +809,7 @@ export function Settings({ onEnvironmentChange }: SettingsProps) {
             </div>
             <div className="flex-1">
               <h3 className="text-lg font-semibold text-white">Manager Update</h3>
-              <p className="text-xs text-gray-500">Keep OpenClaw Manager up to date</p>
+              <p className="text-xs text-gray-500">保持 OpenClaw小白安装工具 为最新版本</p>
             </div>
             <span className="text-xs font-mono text-gray-500 bg-dark-600 px-2 py-1 rounded">v{appVersion}</span>
           </div>

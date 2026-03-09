@@ -403,7 +403,7 @@ try {{
 }}
 
 Write-Host ""
-Write-Host "You can close this window and click Refresh in OpenClaw Manager." -ForegroundColor Cyan
+Write-Host "You can close this window and click Refresh in OpenClaw小白安装工具." -ForegroundColor Cyan
 Write-Host ""
 Read-Host "Press Enter to close this window"
 ' -Verb RunAs
@@ -444,7 +444,7 @@ else
     echo "❌ Installation failed. Please check the error above."
 fi
 echo ""
-echo "You can close this window and click Refresh in OpenClaw Manager."
+echo "You can close this window and click Refresh in OpenClaw小白安装工具."
 read -p "Press Enter to close this window..."
 "#;
 
@@ -489,7 +489,7 @@ else
     echo "❌ Installation failed. Please check the error above."
 fi
 echo ""
-echo "You can close this window and click Refresh in OpenClaw Manager."
+echo "You can close this window and click Refresh in OpenClaw小白安装工具."
 read -p "Press Enter to close this window..."
 "#;
 
@@ -935,7 +935,7 @@ if ($hasWinget) {
 }
 
 Write-Host ""
-Write-Host "Please restart OpenClaw Manager after installation" -ForegroundColor Green
+Write-Host "Please restart OpenClaw小白安装工具 after installation" -ForegroundColor Green
 Write-Host ""
 Read-Host "Press Enter to close this window"
 ' -Verb RunAs

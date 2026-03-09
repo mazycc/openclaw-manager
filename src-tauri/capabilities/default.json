@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "OpenClaw Manager 默认权限配置",
+  "description": "OpenClaw小白安装工具 默认权限配置",
   "windows": [
     "main"
   ],

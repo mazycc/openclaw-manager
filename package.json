@@ -1,8 +1,8 @@
 {
   "name": "openclaw-manager",
   "version": "0.0.19",
-  "description": "🦞 OpenClaw Cross-Platform Manager - High-Performance AI Assistant Configuration & Service Management",
-  "author": "OpenClaw Team",
+  "description": "OpenClaw小白安装工具 - OpenClaw 安装、配置与服务管理工具",
+  "author": "微信：yunqi31 | 公众号：AI芯实战",
   "license": "MIT",
   "type": "module",
   "scripts": {

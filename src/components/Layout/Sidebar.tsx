@@ -48,8 +48,8 @@ export function Sidebar({ currentPage, onNavigate, serviceStatus }: SidebarProps
             <span className="text-lg">🦞</span>
           </div>
           <div>
-            <h1 className="text-sm font-semibold text-white">OpenClaw</h1>
-            <p className="text-xs text-gray-500">Manager</p>
+            <h1 className="text-sm font-semibold leading-tight text-white">OpenClaw小白安装工具</h1>
+            <p className="text-[11px] text-gray-500">公众号：AI芯实战</p>
           </div>
         </div>
       </div>
@@ -98,6 +98,10 @@ export function Sidebar({ currentPage, onNavigate, serviceStatus }: SidebarProps
             </span>
           </div>
           <p className="text-xs text-gray-500">Port: {serviceStatus?.port ?? 18789}</p>
+        </div>
+        <div className="mt-3 px-4 py-3 bg-dark-700 rounded-lg">
+          <p className="text-[11px] text-gray-500">微信：yunqi31</p>
+          <p className="text-[11px] text-gray-500">公众号：AI芯实战</p>
         </div>
       </div>
     </aside>

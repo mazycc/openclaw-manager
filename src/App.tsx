@@ -69,7 +69,7 @@ interface AnnouncementInfo {
   ends_at?: string | null;
 }
 
-const ANNOUNCEMENT_URL = 'https://raw.githubusercontent.com/mazycc/openclaw-manager/main/announcement.json';
+const ANNOUNCEMENT_URL = 'https://www.steadyai.work/announcement.json';
 const ANNOUNCEMENT_DISMISSED_KEY = 'openclaw_manager_dismissed_announcement';
 
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean, error: Error | null }> {

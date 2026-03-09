@@ -1,7 +1,83 @@
 use crate::utils::{log_sanitizer, platform, shell};
+use log::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
 use tauri::command;
-use log::{info, warn, error, debug};
+
+const POWERSHELL_GIT_HTTPS_SETUP: &str = r#"
+$gitConfig = Join-Path $env:TEMP 'openclaw-manager-git-install.conf'
+Set-Content -Path $gitConfig -Value '' -Encoding Ascii
+$env:GIT_CONFIG_GLOBAL = $gitConfig
+$env:GIT_CONFIG_NOSYSTEM = '1'
+$env:GIT_CONFIG_COUNT = '2'
+$env:GIT_CONFIG_KEY_0 = 'url.https://github.com/.insteadOf'
+$env:GIT_CONFIG_VALUE_0 = 'ssh://git@github.com/'
+$env:GIT_CONFIG_KEY_1 = 'url.https://github.com/.insteadOf'
+$env:GIT_CONFIG_VALUE_1 = 'git@github.com:'
+$env:GIT_TERMINAL_PROMPT = '0'
+$env:PATH = "$env:APPDATA\npm;$env:PATH"
+"#;
+
+const BASH_GIT_HTTPS_SETUP: &str = r#"
+GIT_CONFIG_GLOBAL="${TMPDIR:-/tmp}/openclaw-manager-git-install.conf"
+: > "$GIT_CONFIG_GLOBAL"
+export GIT_CONFIG_GLOBAL
+export GIT_CONFIG_NOSYSTEM=1
+export GIT_CONFIG_COUNT=2
+export GIT_CONFIG_KEY_0='url.https://github.com/.insteadOf'
+export GIT_CONFIG_VALUE_0='ssh://git@github.com/'
+export GIT_CONFIG_KEY_1='url.https://github.com/.insteadOf'
+export GIT_CONFIG_VALUE_1='git@github.com:'
+export GIT_TERMINAL_PROMPT=0
+NPM_PREFIX="$(npm prefix -g 2>/dev/null || true)"
+if [ -n "$NPM_PREFIX" ]; then
+    export PATH="$NPM_PREFIX/bin:$NPM_PREFIX:$PATH"
+fi
+"#;
+
+const POWERSHELL_FIND_OPENCLAW: &str = r#"
+$openclawCmd = $null
+$npmPrefix = npm prefix -g 2>$null
+if ($npmPrefix) {
+    $candidate = Join-Path $npmPrefix 'openclaw.cmd'
+    if (Test-Path $candidate) {
+        $openclawCmd = $candidate
+    }
+}
+if (-not $openclawCmd -and $env:APPDATA) {
+    $candidate = Join-Path $env:APPDATA 'npm\openclaw.cmd'
+    if (Test-Path $candidate) {
+        $openclawCmd = $candidate
+    }
+}
+if (-not $openclawCmd) {
+    $command = Get-Command openclaw -ErrorAction SilentlyContinue
+    if ($command) {
+        $openclawCmd = $command.Source
+    }
+}
+if (-not $openclawCmd) {
+    throw 'OpenClaw CLI was installed but could not be found in the npm global directory or PATH.'
+}
+"#;
+
+const BASH_FIND_OPENCLAW: &str = r#"
+OPENCLAW_BIN=''
+NPM_PREFIX="$(npm prefix -g 2>/dev/null || true)"
+if [ -n "$NPM_PREFIX" ]; then
+    if [ -x "$NPM_PREFIX/bin/openclaw" ]; then
+        OPENCLAW_BIN="$NPM_PREFIX/bin/openclaw"
+    elif [ -x "$NPM_PREFIX/openclaw" ]; then
+        OPENCLAW_BIN="$NPM_PREFIX/openclaw"
+    fi
+fi
+if [ -z "$OPENCLAW_BIN" ]; then
+    OPENCLAW_BIN="$(command -v openclaw 2>/dev/null || true)"
+fi
+if [ -z "$OPENCLAW_BIN" ]; then
+    echo "OpenClaw CLI was installed but could not be found in the npm global directory or PATH." >&2
+    exit 1
+fi
+"#;
 
 /// Environment check result
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -69,22 +145,33 @@ pub async fn check_environment() -> Result<EnvironmentStatus, String> {
 
     let node_installed = node_version.is_some();
     let node_version_ok = check_node_version_requirement(&node_version);
-    info!("[Environment Check] Node.js: installed={}, version={:?}, version_ok={}",
-        node_installed, node_version, node_version_ok);
+    info!(
+        "[Environment Check] Node.js: installed={}, version={:?}, version_ok={}",
+        node_installed, node_version, node_version_ok
+    );
 
     let git_installed = git_version.is_some();
-    info!("[Environment Check] Git: installed={}, version={:?}",
-        git_installed, git_version);
+    info!(
+        "[Environment Check] Git: installed={}, version={:?}",
+        git_installed, git_version
+    );
 
     let openclaw_installed = openclaw_version.is_some();
-    info!("[Environment Check] OpenClaw: installed={}, version={:?}",
-        openclaw_installed, openclaw_version);
+    info!(
+        "[Environment Check] OpenClaw: installed={}, version={:?}",
+        openclaw_installed, openclaw_version
+    );
 
     // Check Gateway Service (only if OpenClaw is installed)
     let gateway_service_installed = if openclaw_installed {
         info!("[Environment Check] Checking Gateway Service...");
-        let installed = tokio::task::spawn_blocking(|| check_gateway_installed()).await.unwrap_or(false);
-        info!("[Environment Check] Gateway Service: installed={}", installed);
+        let installed = tokio::task::spawn_blocking(|| check_gateway_installed())
+            .await
+            .unwrap_or(false);
+        info!(
+            "[Environment Check] Gateway Service: installed={}",
+            installed
+        );
         installed
     } else {
         false
@@ -93,11 +180,18 @@ pub async fn check_environment() -> Result<EnvironmentStatus, String> {
     // Check config directory
     let config_dir = platform::get_config_dir();
     let config_dir_exists = std::path::Path::new(&config_dir).exists();
-    info!("[Environment Check] Config directory: {}, exists={}", config_dir, config_dir_exists);
+    info!(
+        "[Environment Check] Config directory: {}, exists={}",
+        config_dir, config_dir_exists
+    );
 
-    let ready = node_installed && node_version_ok && openclaw_installed && gateway_service_installed;
-    info!("[Environment Check] Environment ready status: ready={}", ready);
-    
+    let ready =
+        node_installed && node_version_ok && openclaw_installed && gateway_service_installed;
+    info!(
+        "[Environment Check] Environment ready status: ready={}",
+        ready
+    );
+
     Ok(EnvironmentStatus {
         node_installed,
         node_version,
@@ -154,7 +248,11 @@ fn get_node_version() -> Option<String> {
         for path in possible_paths {
             if std::path::Path::new(&path).exists() {
                 if let Ok(output) = shell::run_command_output(&path, &["--version"]) {
-                    info!("[Environment Check] Found Node.js at {}: {}", path, output.trim());
+                    info!(
+                        "[Environment Check] Found Node.js at {}: {}",
+                        path,
+                        output.trim()
+                    );
                     return Some(output.trim().to_string());
                 }
             }
@@ -178,7 +276,7 @@ fn get_unix_node_paths() -> Vec<String> {
 
     // Homebrew (macOS)
     paths.push("/opt/homebrew/bin/node".to_string()); // Apple Silicon
-    paths.push("/usr/local/bin/node".to_string());     // Intel Mac
+    paths.push("/usr/local/bin/node".to_string()); // Intel Mac
 
     // System installation
     paths.push("/usr/bin/node".to_string());
@@ -200,7 +298,10 @@ fn get_unix_node_paths() -> Vec<String> {
         if let Ok(version) = std::fs::read_to_string(&nvm_default) {
             let version = version.trim();
             if !version.is_empty() {
-                paths.insert(0, format!("{}/.nvm/versions/node/v{}/bin/node", home_str, version));
+                paths.insert(
+                    0,
+                    format!("{}/.nvm/versions/node/v{}/bin/node", home_str, version),
+                );
             }
         }
 
@@ -236,20 +337,38 @@ fn get_windows_node_paths() -> Vec<String> {
         let home_str = home.display().to_string();
 
         // nvm for Windows user installation
-        paths.push(format!("{}\\AppData\\Roaming\\nvm\\current\\node.exe", home_str));
+        paths.push(format!(
+            "{}\\AppData\\Roaming\\nvm\\current\\node.exe",
+            home_str
+        ));
 
         // fnm (Fast Node Manager) for Windows
-        paths.push(format!("{}\\AppData\\Roaming\\fnm\\aliases\\default\\node.exe", home_str));
-        paths.push(format!("{}\\AppData\\Local\\fnm\\aliases\\default\\node.exe", home_str));
+        paths.push(format!(
+            "{}\\AppData\\Roaming\\fnm\\aliases\\default\\node.exe",
+            home_str
+        ));
+        paths.push(format!(
+            "{}\\AppData\\Local\\fnm\\aliases\\default\\node.exe",
+            home_str
+        ));
         paths.push(format!("{}\\.fnm\\aliases\\default\\node.exe", home_str));
 
         // volta
-        paths.push(format!("{}\\AppData\\Local\\Volta\\bin\\node.exe", home_str));
+        paths.push(format!(
+            "{}\\AppData\\Local\\Volta\\bin\\node.exe",
+            home_str
+        ));
         // volta invokes via shim, just check bin directory
 
         // scoop installation
-        paths.push(format!("{}\\scoop\\apps\\nodejs\\current\\node.exe", home_str));
-        paths.push(format!("{}\\scoop\\apps\\nodejs-lts\\current\\node.exe", home_str));
+        paths.push(format!(
+            "{}\\scoop\\apps\\nodejs\\current\\node.exe",
+            home_str
+        ));
+        paths.push(format!(
+            "{}\\scoop\\apps\\nodejs-lts\\current\\node.exe",
+            home_str
+        ));
 
         // chocolatey installation
         paths.push("C:\\ProgramData\\chocolatey\\lib\\nodejs\\tools\\node.exe".to_string());
@@ -326,7 +445,8 @@ fn get_openclaw_version() -> Option<String> {
 fn check_node_version_requirement(version: &Option<String>) -> bool {
     if let Some(v) = version {
         // Parse version "v22.1.0" -> 22
-        let major = v.trim_start_matches('v')
+        let major = v
+            .trim_start_matches('v')
             .split('.')
             .next()
             .and_then(|s| s.parse::<u32>().ok())
@@ -385,7 +505,8 @@ async fn install_gateway_windows() -> Result<String, String> {
     let openclaw_path = shell::get_openclaw_path().unwrap_or_else(|| "openclaw".to_string());
     let escaped_path = openclaw_path.replace('\\', "\\\\");
 
-    let script = format!(r#"
+    let script = format!(
+        r#"
 Start-Process powershell -ArgumentList '-NoExit', '-Command', '
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "  OpenClaw Gateway Service Installer" -ForegroundColor White
@@ -407,7 +528,9 @@ Write-Host "You can close this window and click Refresh in OpenClaw小白安装�
 Write-Host ""
 Read-Host "Press Enter to close this window"
 ' -Verb RunAs
-"#, escaped_path);
+"#,
+        escaped_path
+    );
 
     match shell::run_powershell_output(&script) {
         Ok(_) => {
@@ -415,7 +538,10 @@ Read-Host "Press Enter to close this window"
             Ok("Gateway install terminal opened with administrator privileges. Please complete the installation and click Refresh.".to_string())
         }
         Err(e) => {
-            warn!("[Gateway Install] Failed to launch elevated terminal: {}", e);
+            warn!(
+                "[Gateway Install] Failed to launch elevated terminal: {}",
+                e
+            );
             Err(format!("Failed to open administrator terminal: {}. Please open PowerShell as Administrator and run: openclaw gateway install", e))
         }
     }
@@ -510,13 +636,19 @@ read -p "Press Enter to close this window..."
             .spawn()
             .is_ok()
         {
-            info!("[Gateway Install] Terminal '{}' launched successfully on Linux", term);
+            info!(
+                "[Gateway Install] Terminal '{}' launched successfully on Linux",
+                term
+            );
             return Ok("Gateway install terminal opened. Please enter your password when prompted and click Refresh after completion.".to_string());
         }
     }
 
     warn!("[Gateway Install] No terminal emulator found on Linux");
-    Err("Unable to launch terminal. Please open a terminal and run: sudo openclaw gateway install".to_string())
+    Err(
+        "Unable to launch terminal. Please open a terminal and run: sudo openclaw gateway install"
+            .to_string(),
+    )
 }
 
 /// Install Node.js
@@ -530,15 +662,15 @@ pub async fn install_nodejs() -> Result<InstallResult, String> {
         "windows" => {
             info!("[Install Node.js] Using Windows installation method...");
             install_nodejs_windows().await
-        },
+        }
         "macos" => {
             info!("[Install Node.js] Using macOS installation method (Homebrew)...");
             install_nodejs_macos().await
-        },
+        }
         "linux" => {
             info!("[Install Node.js] Using Linux installation method...");
             install_nodejs_linux().await
-        },
+        }
         _ => {
             error!("[Install Node.js] Unsupported operating system: {}", os);
             Ok(InstallResult {
@@ -546,7 +678,7 @@ pub async fn install_nodejs() -> Result<InstallResult, String> {
                 message: "Unsupported operating system".to_string(),
                 error: Some(format!("Unsupported operating system: {}", os)),
             })
-        },
+        }
     };
 
     match &result {
@@ -725,11 +857,11 @@ pub async fn install_openclaw() -> Result<InstallResult, String> {
         "windows" => {
             info!("[Install OpenClaw] Using Windows installation method...");
             install_openclaw_windows().await
-        },
+        }
         _ => {
             info!("[Install OpenClaw] Using Unix installation method (npm)...");
             install_openclaw_unix().await
-        },
+        }
     };
 
     match &result {
@@ -743,31 +875,37 @@ pub async fn install_openclaw() -> Result<InstallResult, String> {
 
 /// Install OpenClaw on Windows
 async fn install_openclaw_windows() -> Result<InstallResult, String> {
-    let script = r#"
+    let script = format!(
+        r#"
 $ErrorActionPreference = 'Stop'
+{git_setup}
 
 # Check Node.js
 $nodeVersion = node --version 2>$null
 if (-not $nodeVersion) {
-    Write-Host "Error: Please install Node.js first"
-    exit 1
+    throw "Please install Node.js first"
 }
 
 Write-Host "Installing OpenClaw using npm..."
 npm install -g openclaw@latest --unsafe-perm
-
-# Verify installation
-$openclawVersion = openclaw --version 2>$null
-if ($openclawVersion) {
-    Write-Host "OpenClaw installed successfully: $openclawVersion"
-    exit 0
-} else {
-    Write-Host "OpenClaw installation failed"
-    exit 1
+if ($LASTEXITCODE -ne 0) {
+    throw "npm install -g openclaw@latest failed with exit code $LASTEXITCODE"
 }
-"#;
 
-    match shell::run_powershell_output(script) {
+{find_openclaw}
+
+$openclawVersion = & $openclawCmd --version 2>$null
+if ($LASTEXITCODE -ne 0 -or -not $openclawVersion) {
+    throw "OpenClaw installation verification failed"
+}
+
+Write-Host "OpenClaw installed successfully: $openclawVersion"
+"#,
+        git_setup = POWERSHELL_GIT_HTTPS_SETUP,
+        find_openclaw = POWERSHELL_FIND_OPENCLAW,
+    );
+
+    match shell::run_powershell_output(&script) {
         Ok(output) => {
             if get_openclaw_version().is_some() {
                 Ok(InstallResult {
@@ -793,21 +931,28 @@ if ($openclawVersion) {
 
 /// Install OpenClaw on Unix systems
 async fn install_openclaw_unix() -> Result<InstallResult, String> {
-    let script = r#"
+    let script = format!(
+        r#"
+set -e
+{git_setup}
+
 # Check Node.js
 if ! command -v node &> /dev/null; then
-    echo "Error: Please install Node.js first"
+    echo "Error: Please install Node.js first" >&2
     exit 1
 fi
 
 echo "Installing OpenClaw using npm..."
 npm install -g openclaw@latest --unsafe-perm
 
-# Verify installation
-openclaw --version
-"#;
+{find_openclaw}
+"$OPENCLAW_BIN" --version
+"#,
+        git_setup = BASH_GIT_HTTPS_SETUP,
+        find_openclaw = BASH_FIND_OPENCLAW,
+    );
 
-    match shell::run_bash_output(script) {
+    match shell::run_bash_output(&script) {
         Ok(output) => Ok(InstallResult {
             success: true,
             message: format!("OpenClaw installed successfully! {}", output),
@@ -846,7 +991,10 @@ pub async fn init_openclaw_config() -> Result<InstallResult, String> {
         let path = format!("{}/{}", config_dir, subdir);
         info!("[Init Config] Creating subdirectory: {}", subdir);
         if let Err(e) = std::fs::create_dir_all(&path) {
-            error!("[Init Config] Failed to create directory: {} - {}", subdir, e);
+            error!(
+                "[Init Config] Failed to create directory: {} - {}",
+                subdir, e
+            );
             return Ok(InstallResult {
                 success: false,
                 message: format!("Failed to create directory: {}", subdir),
@@ -878,18 +1026,26 @@ pub async fn init_openclaw_config() -> Result<InstallResult, String> {
 
     // Also set controlUi.allowInsecureAuth for local manager (skip device pairing)
     info!("[Init Config] Executing: openclaw config set gateway.controlUi.allowInsecureAuth true");
-    let _ = shell::run_openclaw(&["config", "set", "gateway.controlUi.allowInsecureAuth", "true"]);
+    let _ = shell::run_openclaw(&[
+        "config",
+        "set",
+        "gateway.controlUi.allowInsecureAuth",
+        "true",
+    ]);
 
     match result {
         Ok(output) => {
             info!("[Init Config] Configuration initialized successfully");
-            debug!("[Init Config] Command output: {}", log_sanitizer::sanitize(&output));
+            debug!(
+                "[Init Config] Command output: {}",
+                log_sanitizer::sanitize(&output)
+            );
             Ok(InstallResult {
                 success: true,
                 message: "Configuration initialized successfully!".to_string(),
                 error: None,
             })
-        },
+        }
         Err(e) => {
             error!("[Init Config] Configuration initialization failed: {}", e);
             Ok(InstallResult {
@@ -897,7 +1053,7 @@ pub async fn init_openclaw_config() -> Result<InstallResult, String> {
                 message: "Configuration initialization failed".to_string(),
                 error: Some(e),
             })
-        },
+        }
     }
 }
 
@@ -997,43 +1153,95 @@ read -p "Press Enter to close this window..."
 /// Open terminal to install OpenClaw
 async fn open_openclaw_install_terminal() -> Result<String, String> {
     if platform::is_windows() {
-        let script = r#"
-Start-Process powershell -ArgumentList '-NoExit', '-Command', '
+        let terminal_script = format!(
+            r#"
+$ErrorActionPreference = 'Stop'
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "    OpenClaw Installation Wizard" -ForegroundColor White
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
-Write-Host "Installing OpenClaw..." -ForegroundColor Yellow
-npm install -g openclaw@latest
+{git_setup}
 
-Write-Host ""
-Write-Host "Initializing configuration..."
-openclaw config set gateway.mode local
+try {{
+    Write-Host "Installing OpenClaw..." -ForegroundColor Yellow
+    npm install -g openclaw@latest --unsafe-perm
+    if ($LASTEXITCODE -ne 0) {{
+        throw "npm install -g openclaw@latest failed with exit code $LASTEXITCODE"
+    }}
 
-Write-Host ""
-Write-Host "Installation complete!" -ForegroundColor Green
-openclaw --version
+    {find_openclaw}
+
+    Write-Host ""
+    Write-Host "Initializing configuration..." -ForegroundColor Yellow
+    & $openclawCmd config set gateway.mode local
+    if ($LASTEXITCODE -ne 0) {{
+        throw "Failed to set gateway.mode local"
+    }}
+
+    & $openclawCmd config set gateway.controlUi.allowInsecureAuth true
+    if ($LASTEXITCODE -ne 0) {{
+        throw "Failed to set gateway.controlUi.allowInsecureAuth"
+    }}
+
+    $configRoot = Join-Path $HOME '.openclaw'
+    New-Item -ItemType Directory -Force -Path (Join-Path $configRoot 'agents\main\sessions') | Out-Null
+    New-Item -ItemType Directory -Force -Path (Join-Path $configRoot 'agents\main\agent') | Out-Null
+    New-Item -ItemType Directory -Force -Path (Join-Path $configRoot 'credentials') | Out-Null
+
+    $openclawVersion = & $openclawCmd --version
+    if ($LASTEXITCODE -ne 0 -or -not $openclawVersion) {{
+        throw "OpenClaw installation verification failed"
+    }}
+
+    Write-Host ""
+    Write-Host "Installation complete!" -ForegroundColor Green
+    Write-Host $openclawVersion -ForegroundColor Green
+}} catch {{
+    Write-Host ""
+    Write-Host "Installation failed: $($_.Exception.Message)" -ForegroundColor Red
+}}
+
 Write-Host ""
 Read-Host "Press Enter to close this window"
-'
-"#;
-        shell::run_powershell_output(script)?;
+"#,
+            git_setup = POWERSHELL_GIT_HTTPS_SETUP,
+            find_openclaw = POWERSHELL_FIND_OPENCLAW,
+        );
+        let launcher_script = format!(
+            r#"
+$scriptPath = Join-Path $env:TEMP 'openclaw_install_openclaw.ps1'
+@'
+{terminal_script}
+'@ | Set-Content -Path $scriptPath -Encoding UTF8
+Start-Process powershell -ArgumentList '-NoExit', '-ExecutionPolicy', 'Bypass', '-File', $scriptPath
+"#,
+            terminal_script = terminal_script,
+        );
+        shell::run_powershell_output(&launcher_script)?;
         Ok("Installation terminal opened".to_string())
     } else if platform::is_macos() {
-        let script_content = r#"#!/bin/bash
+        let script_content = format!(
+            r#"#!/bin/bash
+set -e
+trap 'status=$?; if [ "$status" -ne 0 ]; then echo ""; echo "Installation failed. See messages above."; echo ""; read -p "Press Enter to close this window..."; fi' EXIT
 clear
 echo "========================================"
 echo "    OpenClaw Installation Wizard"
 echo "========================================"
 echo ""
 
+{git_setup}
+
 echo "Installing OpenClaw..."
-npm install -g openclaw@latest
+npm install -g openclaw@latest --unsafe-perm
+
+{find_openclaw}
 
 echo ""
 echo "Initializing configuration..."
-openclaw config set gateway.mode local 2>/dev/null || true
+"$OPENCLAW_BIN" config set gateway.mode local
+"$OPENCLAW_BIN" config set gateway.controlUi.allowInsecureAuth true
 
 mkdir -p ~/.openclaw/agents/main/sessions
 mkdir -p ~/.openclaw/agents/main/agent
@@ -1041,10 +1249,13 @@ mkdir -p ~/.openclaw/credentials
 
 echo ""
 echo "Installation complete!"
-openclaw --version
+"$OPENCLAW_BIN" --version
 echo ""
 read -p "Press Enter to close this window..."
-"#;
+"#,
+            git_setup = BASH_GIT_HTTPS_SETUP,
+            find_openclaw = BASH_FIND_OPENCLAW,
+        );
 
         let script_path = "/tmp/openclaw_install_openclaw.command";
         std::fs::write(script_path, script_content)
@@ -1063,19 +1274,27 @@ read -p "Press Enter to close this window..."
         Ok("Installation terminal opened".to_string())
     } else {
         // Linux
-        let script_content = r#"#!/bin/bash
+        let script_content = format!(
+            r#"#!/bin/bash
+set -e
+trap 'status=$?; if [ "$status" -ne 0 ]; then echo ""; echo "Installation failed. See messages above."; echo ""; read -p "Press Enter to close..."; fi' EXIT
 clear
 echo "========================================"
 echo "    OpenClaw Installation Wizard"
 echo "========================================"
 echo ""
 
+{git_setup}
+
 echo "Installing OpenClaw..."
-npm install -g openclaw@latest
+npm install -g openclaw@latest --unsafe-perm
+
+{find_openclaw}
 
 echo ""
 echo "Initializing configuration..."
-openclaw config set gateway.mode local 2>/dev/null || true
+"$OPENCLAW_BIN" config set gateway.mode local
+"$OPENCLAW_BIN" config set gateway.controlUi.allowInsecureAuth true
 
 mkdir -p ~/.openclaw/agents/main/sessions
 mkdir -p ~/.openclaw/agents/main/agent
@@ -1083,10 +1302,13 @@ mkdir -p ~/.openclaw/credentials
 
 echo ""
 echo "Installation complete!"
-openclaw --version
+"$OPENCLAW_BIN" --version
 echo ""
 read -p "Press Enter to close..."
-"#;
+"#,
+            git_setup = BASH_GIT_HTTPS_SETUP,
+            find_openclaw = BASH_FIND_OPENCLAW,
+        );
 
         let script_path = "/tmp/openclaw_install_openclaw.sh";
         std::fs::write(script_path, script_content)
@@ -1129,27 +1351,35 @@ pub async fn uninstall_openclaw() -> Result<InstallResult, String> {
         "windows" => {
             info!("[Uninstall OpenClaw] Using Windows uninstallation method...");
             uninstall_openclaw_windows().await
-        },
+        }
         _ => {
             info!("[Uninstall OpenClaw] Using Unix uninstallation method (npm)...");
             uninstall_openclaw_unix().await
-        },
+        }
     };
 
     // After npm uninstall, delete the .openclaw config directory
     if let Some(home) = dirs::home_dir() {
         let openclaw_dir = home.join(".openclaw");
         if openclaw_dir.exists() {
-            info!("[Uninstall OpenClaw] Deleting .openclaw directory: {:?}", openclaw_dir);
+            info!(
+                "[Uninstall OpenClaw] Deleting .openclaw directory: {:?}",
+                openclaw_dir
+            );
             match std::fs::remove_dir_all(&openclaw_dir) {
                 Ok(_) => info!("[Uninstall OpenClaw] Successfully deleted .openclaw directory"),
-                Err(e) => warn!("[Uninstall OpenClaw] Failed to delete .openclaw directory: {}", e),
+                Err(e) => warn!(
+                    "[Uninstall OpenClaw] Failed to delete .openclaw directory: {}",
+                    e
+                ),
             }
         } else {
             info!("[Uninstall OpenClaw] .openclaw directory does not exist, skipping");
         }
     } else {
-        warn!("[Uninstall OpenClaw] Could not determine home directory, skipping .openclaw deletion");
+        warn!(
+            "[Uninstall OpenClaw] Could not determine home directory, skipping .openclaw deletion"
+        );
     }
 
     match &result {
@@ -1360,11 +1590,11 @@ pub async fn update_openclaw() -> Result<InstallResult, String> {
         "windows" => {
             info!("[Update OpenClaw] Using Windows update method...");
             update_openclaw_windows().await
-        },
+        }
         _ => {
             info!("[Update OpenClaw] Using Unix update method (npm)...");
             update_openclaw_unix().await
-        },
+        }
     };
 
     match &result {
@@ -1380,7 +1610,35 @@ pub async fn update_openclaw() -> Result<InstallResult, String> {
 async fn update_openclaw_windows() -> Result<InstallResult, String> {
     info!("[Update OpenClaw] Executing npm install -g openclaw@latest...");
 
-    match shell::run_cmd_output("npm install -g openclaw@latest") {
+    let script = format!(
+        r#"
+$ErrorActionPreference = 'Stop'
+{git_setup}
+
+$nodeVersion = node --version 2>$null
+if (-not $nodeVersion) {{
+    throw "Please install Node.js first"
+}}
+
+Write-Host "Updating OpenClaw..."
+npm install -g openclaw@latest --unsafe-perm
+if ($LASTEXITCODE -ne 0) {{
+    throw "npm install -g openclaw@latest failed with exit code $LASTEXITCODE"
+}}
+
+{find_openclaw}
+$openclawVersion = & $openclawCmd --version 2>$null
+if ($LASTEXITCODE -ne 0 -or -not $openclawVersion) {{
+    throw "OpenClaw update verification failed"
+}}
+
+Write-Host $openclawVersion
+"#,
+        git_setup = POWERSHELL_GIT_HTTPS_SETUP,
+        find_openclaw = POWERSHELL_FIND_OPENCLAW,
+    );
+
+    match shell::run_powershell_output(&script) {
         Ok(output) => {
             info!("[Update OpenClaw] npm output: {}", output);
 
@@ -1389,7 +1647,10 @@ async fn update_openclaw_windows() -> Result<InstallResult, String> {
 
             Ok(InstallResult {
                 success: true,
-                message: format!("OpenClaw has been updated to {}", new_version.unwrap_or("latest version".to_string())),
+                message: format!(
+                    "OpenClaw has been updated to {}",
+                    new_version.unwrap_or("latest version".to_string())
+                ),
                 error: None,
             })
         }
@@ -1406,15 +1667,22 @@ async fn update_openclaw_windows() -> Result<InstallResult, String> {
 
 /// Update OpenClaw on Unix systems
 async fn update_openclaw_unix() -> Result<InstallResult, String> {
-    let script = r#"
+    let script = format!(
+        r#"
+set -e
+{git_setup}
+
 echo "Updating OpenClaw..."
-npm install -g openclaw@latest
+npm install -g openclaw@latest --unsafe-perm
 
-# Verify update
-openclaw --version
-"#;
+{find_openclaw}
+"$OPENCLAW_BIN" --version
+"#,
+        git_setup = BASH_GIT_HTTPS_SETUP,
+        find_openclaw = BASH_FIND_OPENCLAW,
+    );
 
-    match shell::run_bash_output(script) {
+    match shell::run_bash_output(&script) {
         Ok(output) => Ok(InstallResult {
             success: true,
             message: format!("OpenClaw has been updated! {}", output),
@@ -1427,4 +1695,3 @@ openclaw --version
         }),
     }
 }
-

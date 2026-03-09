@@ -39,15 +39,14 @@ jobs:
           $version = (Get-Content package.json | ConvertFrom-Json).version
           "version=$version" >> $env:GITHUB_OUTPUT
 
-      - name: Build Windows bundles
-        run: npm run tauri:build -- --target x86_64-pc-windows-msvc --bundles nsis,msi --config src-tauri/tauri.windows.manual.conf.json
+      - name: Build Windows installer
+        run: npm run tauri:build -- --target x86_64-pc-windows-msvc --bundles nsis --config src-tauri/tauri.windows.manual.conf.json
 
-      - name: Upload Windows installers
+      - name: Upload Windows installer
         uses: actions/upload-artifact@v4
         with:
           name: openclaw-xiaobai-windows-${{ steps.app_version.outputs.version }}
           path: |
             src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/**/*.exe
-            src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/**/*.msi
           if-no-files-found: error
           retention-days: 14

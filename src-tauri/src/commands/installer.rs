@@ -882,22 +882,22 @@ $ErrorActionPreference = 'Stop'
 
 # Check Node.js
 $nodeVersion = node --version 2>$null
-if (-not $nodeVersion) {
+if (-not $nodeVersion) {{
     throw "Please install Node.js first"
-}
+}}
 
 Write-Host "Installing OpenClaw using npm..."
 npm install -g openclaw@latest --unsafe-perm
-if ($LASTEXITCODE -ne 0) {
+if ($LASTEXITCODE -ne 0) {{
     throw "npm install -g openclaw@latest failed with exit code $LASTEXITCODE"
-}
+}}
 
 {find_openclaw}
 
 $openclawVersion = & $openclawCmd --version 2>$null
-if ($LASTEXITCODE -ne 0 -or -not $openclawVersion) {
+if ($LASTEXITCODE -ne 0 -or -not $openclawVersion) {{
     throw "OpenClaw installation verification failed"
-}
+}}
 
 Write-Host "OpenClaw installed successfully: $openclawVersion"
 "#,

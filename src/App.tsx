@@ -71,6 +71,9 @@ interface AnnouncementInfo {
 
 const ANNOUNCEMENT_URL = 'https://www.steadyai.work/announcement.json';
 const ANNOUNCEMENT_DISMISSED_KEY = 'openclaw_manager_dismissed_announcement';
+const ANNOUNCEMENT_REFRESH_MS = 60 * 1000;
+
+type AnnouncementStatus = 'unknown' | 'active' | 'inactive';
 
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean, error: Error | null }> {
   constructor(props: { children: React.ReactNode }) {
@@ -134,6 +137,7 @@ function App() {
   // Announcement state
   const [announcementInfo, setAnnouncementInfo] = useState<AnnouncementInfo | null>(null);
   const [showAnnouncementBanner, setShowAnnouncementBanner] = useState(false);
+  const [announcementStatus, setAnnouncementStatus] = useState<AnnouncementStatus>('unknown');
 
   // Check environment
   const checkEnvironment = useCallback(async () => {
@@ -210,11 +214,17 @@ function App() {
       });
 
       if (!response.ok) {
+        setAnnouncementStatus('inactive');
+        setAnnouncementInfo(null);
+        setShowAnnouncementBanner(false);
         return;
       }
 
       const info = await response.json() as AnnouncementInfo;
       if (!info?.enabled || (!info.title && !info.message)) {
+        setAnnouncementStatus('inactive');
+        setAnnouncementInfo(null);
+        setShowAnnouncementBanner(false);
         return;
       }
 
@@ -223,19 +233,23 @@ function App() {
       const endsAt = info.ends_at ? Date.parse(info.ends_at) : null;
 
       if (startsAt && !Number.isNaN(startsAt) && now < startsAt) {
+        setAnnouncementStatus('inactive');
+        setAnnouncementInfo(null);
+        setShowAnnouncementBanner(false);
         return;
       }
 
       if (endsAt && !Number.isNaN(endsAt) && now > endsAt) {
+        setAnnouncementStatus('inactive');
+        setAnnouncementInfo(null);
+        setShowAnnouncementBanner(false);
         return;
       }
 
-      if (info.id && localStorage.getItem(ANNOUNCEMENT_DISMISSED_KEY) === info.id) {
-        return;
-      }
-
+      const dismissed = info.id && localStorage.getItem(ANNOUNCEMENT_DISMISSED_KEY) === info.id;
+      setAnnouncementStatus('active');
       setAnnouncementInfo(info);
-      setShowAnnouncementBanner(true);
+      setShowAnnouncementBanner(!dismissed);
     } catch (e) {
       appLogger.warn('Announcement check failed', e);
     }
@@ -333,18 +347,41 @@ function App() {
   }, [announcementInfo]);
 
   useEffect(() => {
+    if (announcementStatus !== 'active') return;
+
+    setShowUpdateBanner(false);
+    setShowManagerUpdateBanner(false);
+    setUpdateResult(null);
+    setManagerUpdateResult(null);
+  }, [announcementStatus]);
+
+  useEffect(() => {
     appLogger.info('🦞 App component mounted');
     checkEnvironment();
   }, [checkEnvironment]);
 
-  // Delay update check after startup (avoid blocking startup)
+  // Check announcements first, then keep polling for new messages.
   useEffect(() => {
     if (!isTauri()) return;
-    const timer1 = setTimeout(() => { checkUpdate(); }, 2000);
-    const timerAnnouncement = setTimeout(() => { checkAnnouncement(); }, 4000);
-    const timer2 = setTimeout(() => { checkManagerUpdate(); }, 6000);
-    return () => { clearTimeout(timer1); clearTimeout(timerAnnouncement); clearTimeout(timer2); };
-  }, [checkUpdate, checkAnnouncement, checkManagerUpdate]);
+    const timer = setTimeout(() => { checkAnnouncement(); }, 1000);
+    const interval = setInterval(() => { checkAnnouncement(); }, ANNOUNCEMENT_REFRESH_MS);
+    return () => {
+      clearTimeout(timer);
+      clearInterval(interval);
+    };
+  }, [checkAnnouncement]);
+
+  // Only show update banners when no active announcement is being pushed.
+  useEffect(() => {
+    if (!isTauri() || announcementStatus !== 'inactive') return;
+
+    const timer1 = setTimeout(() => { checkUpdate(); }, 1000);
+    const timer2 = setTimeout(() => { checkManagerUpdate(); }, 5000);
+    return () => {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+    };
+  }, [announcementStatus, checkUpdate, checkManagerUpdate]);
 
   // Check security after startup
   useEffect(() => {

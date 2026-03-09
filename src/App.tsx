@@ -6,7 +6,7 @@ import { Header } from './components/Layout/Header';
 
 import { appLogger } from './lib/logger';
 import { isTauri } from './lib/tauri';
-import { Download, X, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { Download, X, Loader2, CheckCircle, AlertCircle, Megaphone, ExternalLink } from 'lucide-react';
 
 // Lazy loaded page components
 const Dashboard = React.lazy(() => import('./components/Dashboard').then(module => ({ default: module.Dashboard })));
@@ -57,6 +57,20 @@ interface SecureVersionInfo {
   current_version: string;
   is_secure: boolean;
 }
+
+interface AnnouncementInfo {
+  id?: string;
+  enabled?: boolean;
+  title?: string;
+  message?: string;
+  action_text?: string | null;
+  action_url?: string | null;
+  starts_at?: string | null;
+  ends_at?: string | null;
+}
+
+const ANNOUNCEMENT_URL = 'https://raw.githubusercontent.com/mazycc/openclaw-manager/main/announcement.json';
+const ANNOUNCEMENT_DISMISSED_KEY = 'openclaw_manager_dismissed_announcement';
 
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean, error: Error | null }> {
   constructor(props: { children: React.ReactNode }) {
@@ -116,6 +130,10 @@ function App() {
   // Security check state
   const [secureVersionInfo, setSecureVersionInfo] = useState<SecureVersionInfo | null>(null);
   const [showSecurityBanner, setShowSecurityBanner] = useState(false);
+
+  // Announcement state
+  const [announcementInfo, setAnnouncementInfo] = useState<AnnouncementInfo | null>(null);
+  const [showAnnouncementBanner, setShowAnnouncementBanner] = useState(false);
 
   // Check environment
   const checkEnvironment = useCallback(async () => {
@@ -182,6 +200,44 @@ function App() {
       }
     } catch (e) {
       appLogger.error('Security check failed', e);
+    }
+  }, []);
+
+  const checkAnnouncement = useCallback(async () => {
+    try {
+      const response = await fetch(`${ANNOUNCEMENT_URL}?t=${Date.now()}`, {
+        cache: 'no-store',
+      });
+
+      if (!response.ok) {
+        return;
+      }
+
+      const info = await response.json() as AnnouncementInfo;
+      if (!info?.enabled || (!info.title && !info.message)) {
+        return;
+      }
+
+      const now = Date.now();
+      const startsAt = info.starts_at ? Date.parse(info.starts_at) : null;
+      const endsAt = info.ends_at ? Date.parse(info.ends_at) : null;
+
+      if (startsAt && !Number.isNaN(startsAt) && now < startsAt) {
+        return;
+      }
+
+      if (endsAt && !Number.isNaN(endsAt) && now > endsAt) {
+        return;
+      }
+
+      if (info.id && localStorage.getItem(ANNOUNCEMENT_DISMISSED_KEY) === info.id) {
+        return;
+      }
+
+      setAnnouncementInfo(info);
+      setShowAnnouncementBanner(true);
+    } catch (e) {
+      appLogger.warn('Announcement check failed', e);
     }
   }, []);
 
@@ -253,6 +309,29 @@ function App() {
     }
   };
 
+  const handleAnnouncementAction = useCallback(async () => {
+    if (!announcementInfo?.action_url) return;
+
+    try {
+      if (isTauri()) {
+        const { open } = await import('@tauri-apps/plugin-shell');
+        await open(announcementInfo.action_url);
+      } else {
+        window.open(announcementInfo.action_url, '_blank', 'noopener,noreferrer');
+      }
+    } catch (e) {
+      appLogger.error('Failed to open announcement link', e);
+      window.open(announcementInfo.action_url, '_blank', 'noopener,noreferrer');
+    }
+  }, [announcementInfo]);
+
+  const dismissAnnouncement = useCallback(() => {
+    if (announcementInfo?.id) {
+      localStorage.setItem(ANNOUNCEMENT_DISMISSED_KEY, announcementInfo.id);
+    }
+    setShowAnnouncementBanner(false);
+  }, [announcementInfo]);
+
   useEffect(() => {
     appLogger.info('🦞 App component mounted');
     checkEnvironment();
@@ -262,9 +341,10 @@ function App() {
   useEffect(() => {
     if (!isTauri()) return;
     const timer1 = setTimeout(() => { checkUpdate(); }, 2000);
+    const timerAnnouncement = setTimeout(() => { checkAnnouncement(); }, 4000);
     const timer2 = setTimeout(() => { checkManagerUpdate(); }, 6000);
-    return () => { clearTimeout(timer1); clearTimeout(timer2); };
-  }, [checkUpdate, checkManagerUpdate]);
+    return () => { clearTimeout(timer1); clearTimeout(timerAnnouncement); clearTimeout(timer2); };
+  }, [checkUpdate, checkAnnouncement, checkManagerUpdate]);
 
   // Check security after startup
   useEffect(() => {
@@ -531,6 +611,54 @@ function App() {
                     setShowManagerUpdateBanner(false);
                     setManagerUpdateResult(null);
                   }}
+                  className="p-1.5 hover:bg-white/20 rounded-lg transition-colors text-white/70 hover:text-white"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Announcement banner */}
+      <AnimatePresence>
+        {showAnnouncementBanner && announcementInfo && (
+          <motion.div
+            initial={{ opacity: 0, y: -50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -50 }}
+            className="fixed top-0 left-0 right-0 z-[40] bg-gradient-to-r from-amber-600 to-orange-600 shadow-lg"
+          >
+            <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <Megaphone size={20} className="text-white shrink-0" />
+                <div className="min-w-0">
+                  {announcementInfo.title && (
+                    <p className="text-sm font-medium text-white truncate">
+                      {announcementInfo.title}
+                    </p>
+                  )}
+                  {announcementInfo.message && (
+                    <p className="text-xs text-white/85 whitespace-pre-line break-words">
+                      {announcementInfo.message}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                {announcementInfo.action_url && (
+                  <button
+                    onClick={handleAnnouncementAction}
+                    className="px-4 py-1.5 bg-white/20 hover:bg-white/30 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+                  >
+                    <ExternalLink size={14} />
+                    {announcementInfo.action_text || '查看详情'}
+                  </button>
+                )}
+                <button
+                  onClick={dismissAnnouncement}
                   className="p-1.5 hover:bg-white/20 rounded-lg transition-colors text-white/70 hover:text-white"
                 >
                   <X size={16} />

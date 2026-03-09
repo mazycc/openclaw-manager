@@ -1,0 +1,10 @@
+{
+  "id": "default-disabled",
+  "enabled": false,
+  "title": "这里填写公告标题",
+  "message": "这里填写公告内容。启用后，用户打开应用会看到顶部横幅。",
+  "action_text": "查看详情",
+  "action_url": "https://mp.weixin.qq.com/",
+  "starts_at": null,
+  "ends_at": null
+}

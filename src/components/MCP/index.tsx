@@ -54,7 +54,7 @@ export function MCP() {
             setConfigs(result);
             setError(null);
         } catch (e) {
-            setError('Failed to load MCP configuration');
+            setError('加载 MCP 配置失败');
             console.error(e);
         } finally {
             setLoading(false);
@@ -77,9 +77,9 @@ export function MCP() {
         try {
             await api.installMcporter();
             setMcporterInstalled(true);
-            setSuccess('mcporter installed successfully!');
+            setSuccess('mcporter 安装成功');
         } catch (e) {
-            setError(`Failed to install mcporter: ${e}`);
+            setError(`安装 mcporter 失败：${e}`);
         } finally {
             setInstallingMcporter(false);
         }
@@ -160,27 +160,27 @@ export function MCP() {
     };
 
     const handleUninstall = async (id: string) => {
-        if (!confirm(`Uninstall MCP "${id}"? This will remove the cloned files and configuration.`)) return;
+        if (!confirm(`确定卸载 MCP “${id}”吗？这会删除克隆下来的文件和对应配置。`)) return;
         try {
             await api.uninstallMCP(id);
-            setSuccess(`Successfully uninstalled ${id}`);
+            setSuccess(`已成功卸载 ${id}`);
             await fetchConfigs();
         } catch (e) {
-            setError(`Failed to uninstall MCP: ${e}`);
+            setError(`卸载 MCP 失败：${e}`);
         }
     };
 
     const handleSave = async () => {
         if (!formData.name.trim()) {
-            setError('Name is required');
+            setError('名称不能为空');
             return;
         }
         if (formData.serverType === 'local' && !formData.command.trim()) {
-            setError('Command is required for local servers');
+            setError('本地服务器必须填写命令');
             return;
         }
         if (formData.serverType === 'remote' && !formData.url.trim()) {
-            setError('URL is required for remote servers');
+            setError('远程服务器必须填写 URL');
             return;
         }
 
@@ -219,16 +219,16 @@ export function MCP() {
             setEditingId(null);
             setIsNew(false);
             setError(null);
-            setSuccess(`Saved configuration for ${formData.name}`);
+            setSuccess(`已保存 ${formData.name} 的配置`);
             await fetchConfigs();
         } catch (e) {
-            setError(`Failed to save: ${e}`);
+            setError(`保存失败：${e}`);
         }
     };
 
     const handleInstall = async () => {
         if (!gitUrl.trim()) {
-            setError('Please enter a GitHub repository URL');
+            setError('请输入 GitHub 仓库地址');
             return;
         }
 
@@ -238,10 +238,10 @@ export function MCP() {
         try {
             let result: string;
             if (installMode === 'plugin') {
-                setInstallProgress('Installing via OpenClaw plugins system...');
+                setInstallProgress('正在通过 OpenClaw 插件系统安装...');
                 result = await api.installMCPPlugin(gitUrl.trim());
             } else {
-                setInstallProgress('Cloning repository and building from source...');
+                setInstallProgress('正在克隆仓库并从源码构建...');
                 result = await api.installMCPFromGit(gitUrl.trim());
             }
             setSuccess(result);
@@ -250,7 +250,7 @@ export function MCP() {
             setInstallProgress('');
             await fetchConfigs();
         } catch (e) {
-            setError(`Installation failed: ${e}`);
+            setError(`安装失败：${e}`);
             setInstallProgress('');
         } finally {
             setInstalling(false);
@@ -258,15 +258,15 @@ export function MCP() {
     };
 
     const handleUninstallMcporter = async () => {
-        if (!confirm('Are you sure you want to uninstall mcporter? This will remove the global npm package.')) return;
+        if (!confirm('确定要卸载 mcporter 吗？这会移除全局 npm 包。')) return;
         setInstallingMcporter(true);
         setError(null);
         try {
             await api.uninstallMcporter();
             setMcporterInstalled(false);
-            setSuccess('mcporter uninstalled successfully');
+            setSuccess('mcporter 已成功卸载');
         } catch (e) {
-            setError(`Failed to uninstall mcporter: ${e}`);
+            setError(`卸载 mcporter 失败：${e}`);
         } finally {
             setInstallingMcporter(false);
         }
@@ -289,8 +289,8 @@ export function MCP() {
         <div className="h-full overflow-y-auto scroll-container pr-2">
             <div className="flex items-center justify-between mb-8">
                 <div>
-                    <h2 className="text-2xl font-bold text-white mb-2">Model Context Protocol</h2>
-                    <p className="text-gray-400">Manage MCP servers to extend Agent capabilities</p>
+                    <h2 className="text-2xl font-bold text-white mb-2">MCP 服务</h2>
+                    <p className="text-gray-400">管理 MCP 服务，扩展智能体能力</p>
                 </div>
                 {!editingId && (
                     <div className="flex items-center gap-2">
@@ -300,7 +300,7 @@ export function MCP() {
                             className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
                         >
                             <GitBranch size={18} />
-                            <span>Install from Git</span>
+                            <span>从 Git 安装</span>
                         </button>
                         <button
                             onClick={handleAddNew}
@@ -308,7 +308,7 @@ export function MCP() {
                             className="flex items-center gap-2 px-4 py-2 bg-claw-500 hover:bg-claw-600 text-white rounded-lg transition-colors"
                         >
                             <Plus size={18} />
-                            <span>Add Manual</span>
+                            <span>手动添加</span>
                         </button>
                     </div>
                 )}
@@ -340,12 +340,12 @@ export function MCP() {
                                 'text-sm font-medium',
                                 mcporterInstalled ? 'text-green-200' : 'text-amber-200'
                             )}>
-                                {mcporterInstalled ? 'mcporter is installed' : 'mcporter is required for MCP support'}
+                                {mcporterInstalled ? 'mcporter 已安装' : 'MCP 功能需要 mcporter'}
                             </p>
                             <p className="text-xs text-gray-500">
                                 {mcporterInstalled
-                                    ? 'OpenClaw can use MCP servers via the mcporter skill'
-                                    : 'Install mcporter to enable MCP server integration with OpenClaw agents'}
+                                    ? 'OpenClaw 已可通过 mcporter 技能使用 MCP 服务'
+                                    : '请先安装 mcporter 以启用 MCP 与 OpenClaw 智能体集成'}
                             </p>
                         </div>
                     </div>
@@ -354,7 +354,7 @@ export function MCP() {
                             onClick={handleUninstallMcporter}
                             disabled={installingMcporter}
                             className="p-2 hover:bg-red-500/20 text-gray-400 hover:text-red-400 rounded-lg transition-colors"
-                            title="Uninstall mcporter"
+                            title="卸载 mcporter"
                         >
                             {installingMcporter ? (
                                 <Loader2 size={16} className="animate-spin" />
@@ -371,12 +371,12 @@ export function MCP() {
                             {installingMcporter ? (
                                 <>
                                     <Loader2 size={16} className="animate-spin" />
-                                    <span>Installing...</span>
+                                    <span>安装中...</span>
                                 </>
                             ) : (
                                 <>
                                     <Download size={16} />
-                                    <span>Install mcporter</span>
+                                    <span>安装 mcporter</span>
                                 </>
                             )}
                         </button>
@@ -426,8 +426,8 @@ export function MCP() {
                                 <Download size={20} className="text-purple-400" />
                             </div>
                             <div>
-                                <h3 className="text-lg font-semibold text-white">Install MCP Server</h3>
-                                <p className="text-sm text-gray-400">Install from a GitHub repository URL</p>
+                                <h3 className="text-lg font-semibold text-white">安装 MCP 服务</h3>
+                                <p className="text-sm text-gray-400">从 GitHub 仓库 URL 安装</p>
                             </div>
                         </div>
 
@@ -444,7 +444,7 @@ export function MCP() {
                                 )}
                             >
                                 <Plug size={15} />
-                                <span>As Plugin</span>
+                                <span>作为插件</span>
                             </button>
                             <button
                                 onClick={() => setInstallMode('source')}
@@ -457,20 +457,20 @@ export function MCP() {
                                 )}
                             >
                                 <GitBranch size={15} />
-                                <span>From Source</span>
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-dark-500 text-gray-200">Recommended</span>
+                                <span>从源码构建</span>
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-dark-500 text-gray-200">推荐</span>
                             </button>
                         </div>
 
                         <p className="text-xs text-gray-500 mb-4">
                             {installMode === 'plugin'
-                                ? 'Uses OpenClaw\'s native plugin system. Only works for packages with openclaw.extensions in package.json.'
-                                : 'Clones the repository, runs npm install & build. Works with any MCP server from GitHub.'}
+                                ? '使用 OpenClaw 原生插件系统，仅适用于 package.json 中包含 openclaw.extensions 的包。'
+                                : '会克隆仓库并执行 npm install 与 build，适用于任意来自 GitHub 的 MCP 服务。'}
                         </p>
 
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-400 mb-2">Repository URL</label>
+                                <label className="block text-sm font-medium text-gray-400 mb-2">仓库地址</label>
                                 <div className="relative">
                                     <GitBranch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
                                     <input
@@ -494,7 +494,7 @@ export function MCP() {
                                     <div className="flex items-center gap-3">
                                         <Loader2 size={20} className="text-purple-400 animate-spin" />
                                         <div>
-                                            <p className="text-sm text-white font-medium">Installing...</p>
+                                            <p className="text-sm text-white font-medium">安装中...</p>
                                             <p className="text-xs text-gray-400">{installProgress}</p>
                                         </div>
                                     </div>
@@ -515,7 +515,7 @@ export function MCP() {
                                     disabled={installing}
                                     className="px-4 py-2 text-gray-400 hover:text-white hover:bg-dark-600 rounded-lg transition-colors disabled:opacity-50"
                                 >
-                                    Cancel
+                                    取消
                                 </button>
                                 <button
                                     onClick={handleInstall}
@@ -525,12 +525,12 @@ export function MCP() {
                                     {installing ? (
                                         <>
                                             <Loader2 size={18} className="animate-spin" />
-                                            <span>Installing...</span>
+                                            <span>安装中...</span>
                                         </>
                                     ) : (
                                         <>
                                             <Download size={18} />
-                                            <span>{installMode === 'plugin' ? 'Install as Plugin' : 'Install from Source'}</span>
+                                            <span>{installMode === 'plugin' ? '安装为插件' : '从源码安装'}</span>
                                         </>
                                     )}
                                 </button>
@@ -551,21 +551,21 @@ export function MCP() {
                     >
                         <div className="flex items-center justify-between mb-6">
                             <h3 className="text-lg font-semibold text-white">
-                                {isNew ? 'Add New MCP Server' : `Edit ${formData.name}`}
+                                {isNew ? '新增 MCP 服务' : `编辑 ${formData.name}`}
                             </h3>
                             <div className="flex items-center gap-2">
                                 <button
                                     onClick={handleCancel}
                                     className="px-4 py-2 text-gray-400 hover:text-white hover:bg-dark-600 rounded-lg transition-colors"
                                 >
-                                    Cancel
+                                    取消
                                 </button>
                                 <button
                                     onClick={handleSave}
                                     className="flex items-center gap-2 px-4 py-2 bg-claw-500 hover:bg-claw-600 text-white rounded-lg transition-colors"
                                 >
                                     <Save size={18} />
-                                    <span>Save</span>
+                                    <span>保存</span>
                                 </button>
                             </div>
                         </div>
@@ -573,7 +573,7 @@ export function MCP() {
                         <div className="space-y-6">
                             <div className="grid grid-cols-2 gap-6">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-400 mb-2">Server Name</label>
+                                    <label className="block text-sm font-medium text-gray-400 mb-2">服务名称</label>
                                     <input
                                         type="text"
                                         value={formData.name}
@@ -582,10 +582,10 @@ export function MCP() {
                                         placeholder="e.g. filesystem-server"
                                         className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white focus:ring-2 focus:ring-claw-500 focus:border-transparent outline-none disabled:opacity-50 disabled:cursor-not-allowed"
                                     />
-                                    <p className="mt-1 text-xs text-gray-500">Unique identifier for this server</p>
+                                    <p className="mt-1 text-xs text-gray-500">该服务的唯一标识</p>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-400 mb-2">Status</label>
+                                    <label className="block text-sm font-medium text-gray-400 mb-2">状态</label>
                                     <div className="flex items-center gap-3 py-2.5">
                                         <label className="flex items-center gap-2 cursor-pointer">
                                             <input
@@ -594,7 +594,7 @@ export function MCP() {
                                                 onChange={(e) => setFormData({ ...formData, enabled: e.target.checked })}
                                                 className="w-5 h-5 rounded border-dark-500 bg-dark-600 text-claw-500 focus:ring-offset-dark-700"
                                             />
-                                            <span className="text-white">Enabled</span>
+                                            <span className="text-white">启用</span>
                                         </label>
                                     </div>
                                 </div>
@@ -602,7 +602,7 @@ export function MCP() {
 
                             {/* Server Type Toggle */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-400 mb-2">Server Type</label>
+                                <label className="block text-sm font-medium text-gray-400 mb-2">服务类型</label>
                                 <div className="flex items-center gap-1 bg-dark-800 rounded-lg p-1">
                                     <button
                                         onClick={() => setFormData({ ...formData, serverType: 'local' })}
@@ -614,7 +614,7 @@ export function MCP() {
                                         )}
                                     >
                                         <Terminal size={15} />
-                                        <span>Local (stdio)</span>
+                                        <span>本地（stdio）</span>
                                     </button>
                                     <button
                                         onClick={() => setFormData({ ...formData, serverType: 'remote' })}
@@ -626,14 +626,14 @@ export function MCP() {
                                         )}
                                     >
                                         <Globe size={15} />
-                                        <span>Remote (URL)</span>
+                                        <span>远程（URL）</span>
                                     </button>
                                 </div>
                             </div>
 
                             {formData.serverType === 'remote' ? (
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-400 mb-2">Server URL</label>
+                                    <label className="block text-sm font-medium text-gray-400 mb-2">服务 URL</label>
                                     <div className="relative">
                                         <Globe className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
                                         <input
@@ -644,12 +644,12 @@ export function MCP() {
                                             className="w-full bg-dark-800 border border-dark-600 rounded-xl pl-10 pr-4 py-2.5 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none font-mono text-sm"
                                         />
                                     </div>
-                                    <p className="mt-1 text-xs text-gray-500">HTTP/HTTPS endpoint for the remote MCP server</p>
+                                    <p className="mt-1 text-xs text-gray-500">远程 MCP 服务的 HTTP/HTTPS 接口地址</p>
                                 </div>
                             ) : (
                                 <>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-400 mb-2">Command</label>
+                                        <label className="block text-sm font-medium text-gray-400 mb-2">命令</label>
                                         <div className="relative">
                                             <Terminal className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
                                             <input
@@ -663,7 +663,7 @@ export function MCP() {
                                     </div>
 
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-400 mb-2">Arguments</label>
+                                        <label className="block text-sm font-medium text-gray-400 mb-2">参数</label>
                                         <input
                                             type="text"
                                             value={formData.args}
@@ -674,7 +674,7 @@ export function MCP() {
                                     </div>
 
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-400 mb-2">Environment Variables</label>
+                                        <label className="block text-sm font-medium text-gray-400 mb-2">环境变量</label>
                                         <textarea
                                             value={formData.env}
                                             onChange={(e) => setFormData({ ...formData, env: e.target.value })}
@@ -698,14 +698,14 @@ export function MCP() {
                         {Object.entries(configs).length === 0 ? (
                             <motion.div variants={itemVariants} className="col-span-full py-12 text-center text-gray-500">
                                 <Blocks size={48} className="mx-auto mb-4 opacity-20" />
-                                <p className="text-lg font-medium mb-1">No MCP Servers Configured</p>
-                                <p className="text-sm mb-6">Add a server manually or install from GitHub</p>
+                                <p className="text-lg font-medium mb-1">还没有配置 MCP 服务</p>
+                                <p className="text-sm mb-6">可以手动添加，或直接从 GitHub 安装</p>
                                 <button
                                     onClick={() => setShowInstallDialog(true)}
                                     className="inline-flex items-center gap-2 px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
                                 >
                                     <GitBranch size={18} />
-                                    <span>Install from GitHub</span>
+                                    <span>从 GitHub 安装</span>
                                 </button>
                             </motion.div>
                         ) : (
@@ -731,7 +731,7 @@ export function MCP() {
                                                         config.enabled ? "bg-green-500" : "bg-gray-500"
                                                     )} />
                                                     <span className="text-xs text-gray-500">
-                                                        {config.enabled ? 'Enabled' : 'Disabled'}
+                                                        {config.enabled ? '已启用' : '已禁用'}
                                                     </span>
                                                 </div>
                                             </div>
@@ -746,21 +746,21 @@ export function MCP() {
                                                         ? "bg-yellow-500/20 text-yellow-400"
                                                         : "hover:bg-emerald-500/20 text-gray-400 hover:text-emerald-400"
                                                 )}
-                                                title="Test server"
+                                                title="测试服务"
                                             >
                                                 {testingId === id ? <Loader2 size={16} className="animate-spin" /> : <Zap size={16} />}
                                             </button>
                                             <button
                                                 onClick={() => handleEdit(id)}
                                                 className="p-2 hover:bg-dark-600 text-gray-400 hover:text-white rounded-lg transition-colors"
-                                                title="Edit"
+                                                title="编辑"
                                             >
                                                 <Edit2 size={16} />
                                             </button>
                                             <button
                                                 onClick={() => handleUninstall(id)}
                                                 className="p-2 hover:bg-red-500/20 text-gray-400 hover:text-red-400 rounded-lg transition-colors"
-                                                title="Uninstall"
+                                                title="卸载"
                                             >
                                                 <Trash2 size={16} />
                                             </button>

@@ -220,7 +220,7 @@ function ProviderDialog({ officialProviders, onClose, onSave, editingProvider }:
     setFormError(null);
 
     if (!providerName || !baseUrl || selectedModels.length === 0) {
-      setFormError('Please fill in complete Provider information and select at least one model');
+      setFormError('请填写完整的供应商信息，并至少选择一个模型');
       return;
     }
 
@@ -263,7 +263,7 @@ function ProviderDialog({ officialProviders, onClose, onSave, editingProvider }:
       onClose();
     } catch (e) {
       aiLogger.error('Failed to save Provider', e);
-      setFormError('Save failed: ' + String(e));
+      setFormError('保存失败：' + String(e));
     } finally {
       setSaving(false);
     }
@@ -289,8 +289,8 @@ function ProviderDialog({ officialProviders, onClose, onSave, editingProvider }:
           <h2 className="text-lg font-semibold text-white flex items-center gap-2">
             {isEditing ? <Settings2 size={20} className="text-claw-400" /> : <Plus size={20} className="text-claw-400" />}
             {isEditing
-              ? `Edit Provider: ${editingProvider?.name}`
-              : (step === 'select' ? 'Add AI Provider' : `Configure ${selectedOfficial?.name || 'Custom Provider'}`)}
+              ? `编辑供应商：${editingProvider?.name}`
+              : (step === 'select' ? '添加 AI 供应商' : `配置 ${selectedOfficial?.name || '自定义供应商'}`)}
           </h2>
           <button onClick={onClose} className="text-gray-500 hover:text-white">
             ✕
@@ -310,7 +310,7 @@ function ProviderDialog({ officialProviders, onClose, onSave, editingProvider }:
               >
                 {/* Official Providers */}
                 <div className="space-y-3">
-                  <h3 className="text-sm font-medium text-gray-400">Official Providers</h3>
+                  <h3 className="text-sm font-medium text-gray-400">官方供应商</h3>
                   <div className="grid grid-cols-2 gap-3">
                     {officialProviders.map(provider => (
                       <button
@@ -322,7 +322,7 @@ function ProviderDialog({ officialProviders, onClose, onSave, editingProvider }:
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-white truncate">{provider.name}</p>
                           <p className="text-xs text-gray-500 truncate">
-                            {provider.suggested_models.length} models
+                            {provider.suggested_models.length} 个模型
                           </p>
                         </div>
                         <ChevronRight size={16} className="text-gray-500 group-hover:text-claw-400 transition-colors" />
@@ -338,7 +338,7 @@ function ProviderDialog({ officialProviders, onClose, onSave, editingProvider }:
                     className="w-full flex items-center justify-center gap-2 p-4 rounded-xl border-2 border-dashed border-dark-500 hover:border-claw-500/50 text-gray-400 hover:text-white transition-all"
                   >
                     <Settings2 size={18} />
-                    <span>Custom Provider (OpenAI/Anthropic API Compatible)</span>
+                    <span>自定义供应商（兼容 OpenAI / Anthropic API）</span>
                   </button>
                 </div>
               </motion.div>
@@ -353,14 +353,14 @@ function ProviderDialog({ officialProviders, onClose, onSave, editingProvider }:
                 {/* Provider Name */}
                 <div>
                   <label className="block text-sm text-gray-400 mb-2">
-                    Provider Name
-                    <span className="text-gray-600 text-xs ml-2">(For configuration identifier, e.g., anthropic-custom)</span>
+                    供应商名称
+                    <span className="text-gray-600 text-xs ml-2">（用于配置标识，例如 anthropic-custom）</span>
                   </label>
                   <input
                     type="text"
                     value={providerName}
                     onChange={e => { setFormError(null); setProviderName(e.target.value); }}
-                    placeholder="e.g., anthropic-custom, my-openai"
+                    placeholder="例如：anthropic-custom、my-openai"
                     className={clsx(
                       'input-base',
                       isCustomUrlWithOfficialName && 'border-yellow-500/50'
@@ -369,20 +369,20 @@ function ProviderDialog({ officialProviders, onClose, onSave, editingProvider }:
                   />
                   {isEditing && (
                     <p className="text-xs text-gray-500 mt-1">
-                      Provider name cannot be modified. Please delete and recreate if you need to change it.
+                      供应商名称不可修改，如需变更请删除后重新创建。
                     </p>
                   )}
                   {isCustomUrlWithOfficialName && !isEditing && (
                     <div className="mt-2 p-2 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
                       <p className="text-xs text-yellow-400">
-                        ⚠️ You are using an official Provider name but have modified the API URL. It is recommended to use a different name to avoid configuration conflicts.
+                        当前使用的是官方供应商名称，但你已修改 API 地址。建议改用其他名称以避免配置冲突。
                       </p>
                       <button
                         type="button"
                         onClick={handleApplySuggestedName}
                         className="mt-1 text-xs text-yellow-300 hover:text-yellow-200 underline"
                       >
-                        Use suggested name: {suggestedName}
+                        使用建议名称：{suggestedName}
                       </button>
                     </div>
                   )}
@@ -390,7 +390,7 @@ function ProviderDialog({ officialProviders, onClose, onSave, editingProvider }:
 
                 {/* API URL */}
                 <div>
-                  <label className="block text-sm text-gray-400 mb-2">API URL</label>
+                  <label className="block text-sm text-gray-400 mb-2">API 地址</label>
                   <input
                     type="text"
                     value={baseUrl}
@@ -411,11 +411,11 @@ function ProviderDialog({ officialProviders, onClose, onSave, editingProvider }:
                   {/* Show current API Key status in edit mode */}
                   {isEditing && editingProvider?.has_api_key && (
                     <div className="mb-2 flex items-center gap-2 text-sm">
-                      <span className="text-gray-500">Current:</span>
+                      <span className="text-gray-500">当前：</span>
                       <code className="px-2 py-0.5 bg-dark-600 rounded text-gray-400">
                         {editingProvider.api_key_masked}
                       </code>
-                      <span className="text-green-400 text-xs">✓ Configured</span>
+                      <span className="text-green-400 text-xs">已配置</span>
                     </div>
                   )}
                   <div className="relative">
@@ -424,7 +424,7 @@ function ProviderDialog({ officialProviders, onClose, onSave, editingProvider }:
                       value={apiKey}
                       onChange={e => setApiKey(e.target.value)}
                       placeholder={isEditing && editingProvider?.has_api_key
-                        ? "Leave empty to keep existing API Key, or enter a new one"
+                        ? '留空则保留当前 API Key，输入新值可覆盖'
                         : "sk-..."}
                       className="input-base pr-10"
                     />
@@ -438,30 +438,30 @@ function ProviderDialog({ officialProviders, onClose, onSave, editingProvider }:
                   </div>
                   {isEditing && editingProvider?.has_api_key && (
                     <p className="text-xs text-gray-500 mt-1">
-                      💡 Leave empty if you don't need to change the API Key
+                      不需要修改 API Key 时可保持留空
                     </p>
                   )}
                 </div>
 
                 {/* API Type */}
                 <div>
-                  <label className="block text-sm text-gray-400 mb-2">API Type</label>
+                  <label className="block text-sm text-gray-400 mb-2">API 类型</label>
                   <select
                     value={apiType}
                     onChange={e => setApiType(e.target.value)}
                     className="input-base"
                   >
-                    <option value="openai-completions">OpenAI Compatible (openai-completions)</option>
-                    <option value="anthropic-messages">Anthropic Compatible (anthropic-messages)</option>
+                    <option value="openai-completions">兼容 OpenAI（openai-completions）</option>
+                    <option value="anthropic-messages">兼容 Anthropic（anthropic-messages）</option>
                   </select>
                 </div>
 
                 {/* Model Selection */}
                 <div>
                   <label className="block text-sm text-gray-400 mb-2">
-                    Select Models
+                    选择模型
                     <span className="text-gray-600 text-xs ml-2">
-                      ({selectedModels.length} selected)
+                      （已选 {selectedModels.length} 个）
                     </span>
                   </label>
 
@@ -486,7 +486,7 @@ function ProviderDialog({ officialProviders, onClose, onSave, editingProvider }:
                             )}>
                               {model.name}
                               {model.recommended && (
-                                <span className="ml-2 text-xs text-claw-400">Recommended</span>
+                                <span className="ml-2 text-xs text-claw-400">推荐</span>
                               )}
                             </p>
                             {model.description && (
@@ -507,7 +507,7 @@ function ProviderDialog({ officialProviders, onClose, onSave, editingProvider }:
                       type="text"
                       value={customModelId}
                       onChange={e => setCustomModelId(e.target.value)}
-                      placeholder="Enter custom model ID"
+                      placeholder="输入自定义模型 ID"
                       className="input-base flex-1"
                       onKeyDown={e => e.key === 'Enter' && addCustomModel()}
                     />
@@ -551,24 +551,24 @@ function ProviderDialog({ officialProviders, onClose, onSave, editingProvider }:
                           Ollama Setup
                         </h4>
                         {isOllamaInstalled === null ? (
-                          <span className="text-xs text-gray-500">Checking...</span>
+                          <span className="text-xs text-gray-500">检查中...</span>
                         ) : isOllamaInstalled ? (
-                          <span className="text-xs text-green-400 flex items-center gap-1"><CheckCircle size={12} /> Installed</span>
+                          <span className="text-xs text-green-400 flex items-center gap-1"><CheckCircle size={12} /> 已安装</span>
                         ) : (
-                          <span className="text-xs text-yellow-400 flex items-center gap-1"><XCircle size={12} /> Not installed</span>
+                          <span className="text-xs text-yellow-400 flex items-center gap-1"><XCircle size={12} /> 未安装</span>
                         )}
                       </div>
 
                       {isOllamaInstalled === false && (
                         <div className="text-sm text-gray-400 flex flex-col gap-2">
-                          <p>Ollama was not detected on your system. You'll need to install it to run models locally.</p>
+                          <p>系统中未检测到 Ollama。如需本地运行模型，请先安装它。</p>
                           <a
                             href="https://ollama.com/download"
                             target="_blank"
                             rel="noopener noreferrer"
                             className="btn-primary py-2 text-center"
                           >
-                            Install Ollama
+                            安装 Ollama
                           </a>
                         </div>
                       )}
@@ -577,7 +577,7 @@ function ProviderDialog({ officialProviders, onClose, onSave, editingProvider }:
                         <>
                           {installedOllamaModels.length > 0 && (
                             <div className="space-y-2">
-                              <p className="text-xs text-gray-400">Detected Local Models:</p>
+                              <p className="text-xs text-gray-400">已检测到的本地模型：</p>
                               <div className="flex flex-wrap gap-2">
                                 {installedOllamaModels.map(m => (
                                   <button
@@ -602,13 +602,13 @@ function ProviderDialog({ officialProviders, onClose, onSave, editingProvider }:
                           )}
 
                           <div className="pt-2 border-t border-dark-600">
-                            <p className="text-xs text-gray-400 mb-2">Install a new model (e.g., qwen3.5:9b, llama3)</p>
+                            <p className="text-xs text-gray-400 mb-2">安装新模型（例如：qwen3.5:9b、llama3）</p>
                             <div className="flex gap-2">
                               <input
                                 type="text"
                                 value={ollamaTargetModel}
                                 onChange={e => setOllamaTargetModel(e.target.value)}
-                                placeholder="Model name"
+                                placeholder="模型名称"
                                 className="input-base flex-1 text-sm py-1.5"
                                 onKeyDown={async (e) => {
                                   if (e.key === 'Enter' && ollamaTargetModel && !installingOllamaModel) {
@@ -624,7 +624,7 @@ function ProviderDialog({ officialProviders, onClose, onSave, editingProvider }:
                                       setOllamaTargetModel('');
                                       aiLogger.info(`Successfully installed model ${ollamaTargetModel}`);
                                     } catch (err) {
-                                      setFormError('Failed to install model: ' + String(err));
+                                      setFormError('安装模型失败：' + String(err));
                                     } finally {
                                       setInstallingOllamaModel(false);
                                     }
@@ -646,7 +646,7 @@ function ProviderDialog({ officialProviders, onClose, onSave, editingProvider }:
                                     setOllamaTargetModel('');
                                     aiLogger.info(`Successfully installed model ${ollamaTargetModel}`);
                                   } catch (err) {
-                                    setFormError('Failed to install model: ' + String(err));
+                                    setFormError('安装模型失败：' + String(err));
                                   } finally {
                                     setInstallingOllamaModel(false);
                                   }
@@ -654,12 +654,12 @@ function ProviderDialog({ officialProviders, onClose, onSave, editingProvider }:
                                 disabled={!ollamaTargetModel || installingOllamaModel}
                                 className="btn-secondary px-3 py-1.5 text-sm whitespace-nowrap"
                               >
-                                {installingOllamaModel ? <Loader2 size={14} className="animate-spin" /> : 'Pull Model'}
+                                {installingOllamaModel ? <Loader2 size={14} className="animate-spin" /> : '拉取模型'}
                               </button>
                             </div>
                             {installingOllamaModel && (
                               <p className="text-xs text-claw-400 mt-2 flex items-center gap-1 animate-pulse">
-                                <Loader2 size={12} className="animate-spin" /> Downloading model... this may take a few minutes depending on your internet connection and model size.
+                                <Loader2 size={12} className="animate-spin" /> 正在下载模型... 根据网络状况和模型大小，可能需要几分钟。
                               </p>
                             )}
                           </div>
@@ -678,7 +678,7 @@ function ProviderDialog({ officialProviders, onClose, onSave, editingProvider }:
                     className="inline-flex items-center gap-1 text-sm text-claw-400 hover:text-claw-300"
                   >
                     <ExternalLink size={14} />
-                    View Official Documentation
+                    查看官方文档
                   </a>
                 )}
 
@@ -704,30 +704,30 @@ function ProviderDialog({ officialProviders, onClose, onSave, editingProvider }:
                     className="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg space-y-3"
                   >
                     <p className="text-yellow-400 text-sm">
-                      ⚠️ You are using the official Provider name "{providerName}" but have modified the API URL.
-                      This may cause the configuration to be overridden by OpenClaw's built-in settings.
+                      当前使用的是官方供应商名称 “{providerName}”，但你已修改 API 地址。
+                      这可能导致配置被 OpenClaw 内置设置覆盖。
                     </p>
                     <p className="text-yellow-300 text-sm">
-                      It is recommended to use a different name, such as "{suggestedName}"
+                      建议改用其他名称，例如 “{suggestedName}”
                     </p>
                     <div className="flex gap-2 pt-2">
                       <button
                         onClick={handleApplySuggestedName}
                         className="btn-secondary text-sm py-2 px-3"
                       >
-                        Use Suggested Name
+                        使用建议名称
                       </button>
                       <button
                         onClick={() => handleSave(true)}
                         className="btn-primary text-sm py-2 px-3"
                       >
-                        Save Anyway
+                        仍然保存
                       </button>
                       <button
                         onClick={() => setShowCustomUrlWarning(false)}
                         className="text-sm text-gray-400 hover:text-white px-3"
                       >
-                        Cancel
+                        取消
                       </button>
                     </div>
                   </motion.div>
@@ -744,13 +744,13 @@ function ProviderDialog({ officialProviders, onClose, onSave, editingProvider }:
               onClick={() => setStep('select')}
               className="btn-secondary"
             >
-              Back
+              返回
             </button>
           )}
           <div className="flex-1" />
           <div className="flex gap-3">
             <button onClick={onClose} className="btn-secondary">
-              Cancel
+              取消
             </button>
             {step === 'configure' && !showCustomUrlWarning && (
               <button
@@ -759,7 +759,7 @@ function ProviderDialog({ officialProviders, onClose, onSave, editingProvider }:
                 className="btn-primary flex items-center gap-2"
               >
                 {saving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
-                {isEditing ? 'Update' : 'Save'}
+                {isEditing ? '更新' : '保存'}
               </button>
             )}
           </div>
@@ -806,7 +806,7 @@ function ProviderCard({ provider, officialProviders, onSetPrimary, onRefresh, on
       setShowDeleteConfirm(false);
       onRefresh();
     } catch (e) {
-      setDeleteError('Delete failed: ' + String(e));
+      setDeleteError('删除失败：' + String(e));
     } finally {
       setDeleting(false);
     }
@@ -835,12 +835,12 @@ function ProviderCard({ provider, officialProviders, onSetPrimary, onRefresh, on
             <h3 className="font-medium text-white">{provider.name}</h3>
             {provider.has_api_key && (
               <span className="px-1.5 py-0.5 bg-green-500/20 text-green-400 text-xs rounded">
-                Configured
+                已配置
               </span>
             )}
             {isCustomUrl && (
               <span className="px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 text-xs rounded">
-                Custom URL
+                自定义 URL
               </span>
             )}
           </div>
@@ -896,7 +896,7 @@ function ProviderCard({ provider, officialProviders, onSetPrimary, onRefresh, on
                           {model.name}
                           {model.is_primary && (
                             <span className="ml-2 text-xs text-claw-400">
-                              <Star size={12} className="inline -mt-0.5" /> Primary Model
+                              <Star size={12} className="inline -mt-0.5" /> 主模型
                             </span>
                           )}
                         </p>
@@ -908,7 +908,7 @@ function ProviderCard({ provider, officialProviders, onSetPrimary, onRefresh, on
                         onClick={() => onSetPrimary(model.full_id)}
                         className="text-xs text-gray-500 hover:text-claw-400 transition-colors"
                       >
-                        Set as Primary
+                        设为主模型
                       </button>
                     )}
                   </div>
@@ -923,7 +923,7 @@ function ProviderCard({ provider, officialProviders, onSetPrimary, onRefresh, on
                   className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg space-y-3"
                 >
                   <p className="text-red-400 text-sm">
-                    ⚠️ Are you sure you want to delete Provider "{provider.name}"? This will also delete all model configurations under it.
+                    确认删除供应商 “{provider.name}” 吗？这会同时删除其下的所有模型配置。
                   </p>
                   {deleteError && (
                     <p className="text-red-300 text-sm bg-red-500/20 p-2 rounded">
@@ -937,14 +937,14 @@ function ProviderCard({ provider, officialProviders, onSetPrimary, onRefresh, on
                       className="btn-primary text-sm py-2 px-3 bg-red-500 hover:bg-red-600 flex items-center gap-1"
                     >
                       {deleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
-                      Confirm Delete
+                      确认删除
                     </button>
                     <button
                       onClick={handleDeleteCancel}
                       disabled={deleting}
                       className="btn-secondary text-sm py-2 px-3"
                     >
-                      Cancel
+                      取消
                     </button>
                   </div>
                 </motion.div>
@@ -961,7 +961,7 @@ function ProviderCard({ provider, officialProviders, onSetPrimary, onRefresh, on
                     className="flex items-center gap-1 text-sm text-claw-400 hover:text-claw-300 transition-colors"
                   >
                     <Pencil size={14} />
-                    Edit Provider
+                    编辑供应商
                   </button>
                   <button
                     onClick={handleDeleteClick}
@@ -969,7 +969,7 @@ function ProviderCard({ provider, officialProviders, onSetPrimary, onRefresh, on
                     className="flex items-center gap-1 text-sm text-red-400 hover:text-red-300 transition-colors"
                   >
                     {deleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
-                    Delete Provider
+                    删除供应商
                   </button>
                 </div>
               )}
@@ -1061,7 +1061,7 @@ export function AIConfig() {
       loadData();
     } catch (e) {
       aiLogger.error('Failed to set primary model', e);
-      alert('Failed to set: ' + e);
+      alert('设置失败：' + e);
     }
   };
 
@@ -1079,13 +1079,13 @@ export function AIConfig() {
         {/* Error Message */}
         {error && (
           <div className="bg-red-500/20 border border-red-500/50 rounded-xl p-4 text-red-300">
-            <p className="font-medium mb-1">Failed to load configuration</p>
+            <p className="font-medium mb-1">加载配置失败</p>
             <p className="text-sm text-red-400">{error}</p>
             <button
               onClick={loadData}
               className="mt-2 text-sm text-red-300 hover:text-white underline"
             >
-              Retry
+              重试
             </button>
           </div>
         )}
@@ -1096,10 +1096,10 @@ export function AIConfig() {
             <div>
               <h2 className="text-xl font-semibold text-white flex items-center gap-2">
                 <Sparkles size={22} className="text-claw-400" />
-                AI Model Configuration
+                AI 模型配置
               </h2>
               <p className="text-sm text-gray-500 mt-1">
-                Manage AI Providers and models used by OpenClaw
+                管理 OpenClaw 使用的 AI 供应商与模型
               </p>
             </div>
             <button
@@ -1107,7 +1107,7 @@ export function AIConfig() {
               className="btn-primary flex items-center gap-2"
             >
               <Plus size={16} />
-              Add Provider
+              添加供应商
             </button>
           </div>
 
@@ -1117,19 +1117,19 @@ export function AIConfig() {
               <Star size={24} className="text-claw-400" />
             </div>
             <div className="flex-1">
-              <p className="text-sm text-gray-400">Current Primary Model</p>
+              <p className="text-sm text-gray-400">当前主模型</p>
               {aiConfig?.primary_model ? (
                 <p className="text-lg font-medium text-white">{aiConfig.primary_model}</p>
               ) : (
-                <p className="text-lg text-gray-500">Not Set</p>
+                <p className="text-lg text-gray-500">未设置</p>
               )}
             </div>
             <div className="text-right mr-4">
               <p className="text-sm text-gray-500">
-                {aiConfig?.configured_providers.length || 0} Providers
+                {aiConfig?.configured_providers.length || 0} 个供应商
               </p>
               <p className="text-sm text-gray-500">
-                {aiConfig?.available_models.length || 0} Available Models
+                {aiConfig?.available_models.length || 0} 个可用模型
               </p>
             </div>
             <button
@@ -1142,7 +1142,7 @@ export function AIConfig() {
               ) : (
                 <Zap size={16} />
               )}
-              Test Connection
+              测试连接
             </button>
           </div>
 
@@ -1164,30 +1164,30 @@ export function AIConfig() {
                 )}
                 <div className="flex-1">
                   <p className={clsx('font-medium', testResult.success ? 'text-green-400' : 'text-red-400')}>
-                    {testResult.success ? 'Connection Successful' : 'Connection Failed'}
+                    {testResult.success ? '连接成功' : '连接失败'}
                   </p>
                   {testResult.latency_ms && (
-                    <p className="text-xs text-gray-400">Response Time: {testResult.latency_ms}ms</p>
+                    <p className="text-xs text-gray-400">响应时间：{testResult.latency_ms}ms</p>
                   )}
                 </div>
                 <button
                   onClick={() => setTestResult(null)}
                   className="text-gray-500 hover:text-white text-sm"
                 >
-                  Close
+                  关闭
                 </button>
               </div>
 
               {testResult.response && (
                 <div className="mt-2 p-3 bg-dark-700 rounded-lg">
-                  <p className="text-xs text-gray-400 mb-1">AI Response:</p>
+                  <p className="text-xs text-gray-400 mb-1">AI 响应：</p>
                   <p className="text-sm text-white whitespace-pre-wrap">{testResult.response}</p>
                 </div>
               )}
 
               {testResult.error && (
                 <div className="mt-2 p-3 bg-red-500/10 rounded-lg">
-                  <p className="text-xs text-red-400 mb-1">Error Message:</p>
+                  <p className="text-xs text-red-400 mb-1">错误信息：</p>
                   <p className="text-sm text-red-300 whitespace-pre-wrap">{testResult.error}</p>
                 </div>
               )}
@@ -1199,7 +1199,7 @@ export function AIConfig() {
         <div className="space-y-4">
           <h3 className="text-lg font-medium text-white flex items-center gap-2">
             <Server size={18} className="text-gray-500" />
-            Configured Providers
+            已配置的供应商
           </h3>
 
           {aiConfig?.configured_providers.length === 0 ? (
@@ -1207,12 +1207,12 @@ export function AIConfig() {
               <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-dark-600 flex items-center justify-center">
                 <Plus size={24} className="text-gray-500" />
               </div>
-              <p className="text-gray-400 mb-4">No AI Providers configured yet</p>
+              <p className="text-gray-400 mb-4">还没有配置 AI 供应商</p>
               <button
                 onClick={() => setShowAddDialog(true)}
                 className="btn-primary"
               >
-                Add First Provider
+                添加第一个供应商
               </button>
             </div>
           ) : (
@@ -1236,7 +1236,7 @@ export function AIConfig() {
           <div className="space-y-4">
             <h3 className="text-lg font-medium text-white flex items-center gap-2">
               <Cpu size={18} className="text-gray-500" />
-              Available Models
+              可用模型
               <span className="text-sm font-normal text-gray-500">
                 ({aiConfig.available_models.length} total)
               </span>
@@ -1264,12 +1264,12 @@ export function AIConfig() {
 
         {/* Configuration Notes */}
         <div className="bg-dark-700/50 rounded-xl p-4 border border-dark-500">
-          <h4 className="text-sm font-medium text-gray-400 mb-2">Configuration Notes</h4>
+          <h4 className="text-sm font-medium text-gray-400 mb-2">配置说明</h4>
           <ul className="text-sm text-gray-500 space-y-1">
-            <li>• Provider configuration is saved in <code className="text-claw-400">~/.openclaw/openclaw.json</code></li>
-            <li>• Supports official Providers (Anthropic, OpenAI, Kimi, etc.) and custom OpenAI/Anthropic compatible APIs</li>
-            <li>• The primary model is used for Agent's default inference and can be switched at any time</li>
-            <li>• Restart the service for configuration changes to take effect</li>
+            <li>供应商配置保存在 <code className="text-claw-400">~/.openclaw/openclaw.json</code> 中。</li>
+            <li>支持官方供应商（Anthropic、OpenAI、Kimi 等）以及兼容 OpenAI / Anthropic 的自定义 API。</li>
+            <li>主模型会作为智能体默认推理模型，后续可随时切换。</li>
+            <li>配置变更后需要重启服务才会生效。</li>
           </ul>
         </div>
       </div>

@@ -813,7 +813,7 @@ export function Channels() {
           {/* Channel list */}
           <div className="md:col-span-1 space-y-2">
             <h3 className="text-sm font-medium text-gray-400 mb-3 px-1">
-              Message Channels
+              消息通道
             </h3>
             {channels.map((channel) => {
               const info = channelInfo[channel.channel_type] || {
@@ -857,12 +857,12 @@ export function Channels() {
                       {isConfigured ? (
                         <>
                           <Check size={12} className="text-green-400" />
-                          <span className="text-xs text-green-400">Configured</span>
+                          <span className="text-xs text-green-400">已配置</span>
                         </>
                       ) : (
                         <>
                           <X size={12} className="text-gray-500" />
-                          <span className="text-xs text-gray-500">Not Configured</span>
+                          <span className="text-xs text-gray-500">未配置</span>
                         </>
                       )}
                     </div>
@@ -939,7 +939,7 @@ export function Channels() {
                                 ) : (
                                   <Download size={14} />
                                 )}
-                                {feishuPluginInstalling ? 'Installing...' : 'One-click Install Plugin'}
+                                {feishuPluginInstalling ? '安装中...' : '一键安装插件'}
                               </button>
                               <button
                                 onClick={checkFeishuPlugin}
@@ -1553,7 +1553,7 @@ export function Channels() {
                       )}
 
                       <p className="text-xs text-gray-500 mt-2">
-                        Each bot account can be bound to a different agent via <strong>Agents → Routing Rules</strong> using Account ID.
+                        每个机器人账号都可以通过 <strong>智能体 → 路由规则</strong> 按账号 ID 绑定到不同智能体。
                       </p>
 
                       {/* Add Account Dialog */}

@@ -2,7 +2,7 @@
 name = "openclaw-manager"
 version = "0.0.19"
 description = "OpenClaw小白安装工具"
-authors = ["微信：yunqi31 | 公众号：AI芯实战"]
+authors = ["使用问题关注公众号：AI芯实战 | 联系方式：微信 yunqi31"]
 edition = "2021"
 
 [build-dependencies]

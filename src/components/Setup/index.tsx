@@ -169,7 +169,7 @@ export function Setup({ onComplete, embedded = false }: SetupProps) {
             className="text-center py-6"
           >
             <Loader2 className="w-10 h-10 text-brand-500 animate-spin mx-auto mb-3" />
-            <p className="text-dark-300">Detecting system environment...</p>
+            <p className="text-dark-300">正在检测系统环境...</p>
           </motion.div>
         )}
 
@@ -185,7 +185,7 @@ export function Setup({ onComplete, embedded = false }: SetupProps) {
             {/* System info (non-embedded mode only) */}
             {!embedded && (
               <div className="flex items-center justify-between text-sm text-dark-400 pb-4 border-b border-dark-700">
-                <span>Operating System</span>
+                <span>操作系统</span>
                 <span className="text-dark-200">{getOsName(envStatus.os)}</span>
               </div>
             )}
@@ -203,8 +203,8 @@ export function Setup({ onComplete, embedded = false }: SetupProps) {
                   <p className="text-white font-medium">Node.js</p>
                   <p className="text-sm text-dark-400">
                     {envStatus.node_version
-                      ? `${envStatus.node_version} ${envStatus.node_version_ok ? '✓' : '(requires v22+)'}`
-                      : 'Not installed'}
+                      ? `${envStatus.node_version} ${envStatus.node_version_ok ? '✓' : '（需要 v22+）'}`
+                      : '未安装'}
                   </p>
                 </div>
               </div>
@@ -220,12 +220,12 @@ export function Setup({ onComplete, embedded = false }: SetupProps) {
                   {installing === 'nodejs' ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      Installing...
+                      安装中...
                     </>
                   ) : (
                     <>
                       <Download className="w-4 h-4" />
-                      Install
+                      安装
                     </>
                   )}
                 </button>
@@ -244,7 +244,7 @@ export function Setup({ onComplete, embedded = false }: SetupProps) {
                 <div>
                   <p className="text-white font-medium">OpenClaw</p>
                   <p className="text-sm text-dark-400">
-                    {envStatus.openclaw_version || 'Not installed'}
+                    {envStatus.openclaw_version || '未安装'}
                   </p>
                 </div>
               </div>
@@ -257,17 +257,17 @@ export function Setup({ onComplete, embedded = false }: SetupProps) {
                   disabled={installing !== null || !envStatus.node_version_ok}
                   className={`btn-primary text-sm px-4 py-2 flex items-center gap-2 ${!envStatus.node_version_ok ? 'opacity-50 cursor-not-allowed' : ''
                     }`}
-                  title={!envStatus.node_version_ok ? 'Please install Node.js first' : ''}
+                  title={!envStatus.node_version_ok ? '请先安装 Node.js' : ''}
                 >
                   {installing === 'openclaw' ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      Installing...
+                      安装中...
                     </>
                   ) : (
                     <>
                       <Download className="w-4 h-4" />
-                      Install
+                      安装
                     </>
                   )}
                 </button>
@@ -293,7 +293,7 @@ export function Setup({ onComplete, embedded = false }: SetupProps) {
                 className="flex-1 btn-secondary py-2.5 flex items-center justify-center gap-2"
               >
                 <RefreshCw className={`w-4 h-4 ${checking ? 'animate-spin' : ''}`} />
-                Re-check
+                重新检查
               </button>
 
               {envStatus.ready && (
@@ -301,7 +301,7 @@ export function Setup({ onComplete, embedded = false }: SetupProps) {
                   onClick={onComplete}
                   className="flex-1 btn-primary py-2.5 flex items-center justify-center gap-2"
                 >
-                  Get Started
+                  开始使用
                   <ArrowRight className="w-4 h-4" />
                 </button>
               )}
@@ -315,7 +315,7 @@ export function Setup({ onComplete, embedded = false }: SetupProps) {
                 rel="noopener noreferrer"
                 className="text-sm text-dark-400 hover:text-brand-400 transition-colors inline-flex items-center gap-1"
               >
-                Manually download Node.js
+                手动下载 Node.js
                 <ExternalLink className="w-3 h-3" />
               </a>
             </div>
@@ -337,9 +337,9 @@ export function Setup({ onComplete, embedded = false }: SetupProps) {
             >
               <CheckCircle2 className="w-12 h-12 text-green-400 mx-auto mb-3" />
             </motion.div>
-            <h3 className="text-lg font-bold text-white mb-1">Environment Ready!</h3>
+            <h3 className="text-lg font-bold text-white mb-1">环境已就绪</h3>
             <p className="text-dark-400 text-sm">
-              Node.js and OpenClaw are properly installed
+              Node.js 和 OpenClaw 已正确安装
             </p>
           </motion.div>
         )}
@@ -356,8 +356,8 @@ export function Setup({ onComplete, embedded = false }: SetupProps) {
             <span className="text-2xl">⚠️</span>
           </div>
           <div>
-            <h2 className="text-lg font-bold text-white mb-1">Environment Setup</h2>
-            <p className="text-dark-400 text-sm">Missing dependencies detected, please complete the following installations</p>
+            <h2 className="text-lg font-bold text-white mb-1">环境安装向导</h2>
+            <p className="text-dark-400 text-sm">检测到缺少依赖，请完成以下安装</p>
           </div>
         </div>
 
@@ -392,8 +392,8 @@ export function Setup({ onComplete, embedded = false }: SetupProps) {
             <span className="text-4xl">🦞</span>
           </motion.div>
           <h1 className="text-2xl font-bold text-white mb-2">OpenClaw小白安装工具</h1>
-          <p className="text-dark-400">Environment Detection & Setup Wizard</p>
-          <p className="text-xs text-dark-500 mt-2">微信：yunqi31 | 公众号：AI芯实战</p>
+          <p className="text-dark-400">环境检测与安装向导</p>
+          <p className="text-xs text-dark-500 mt-2">使用问题关注公众号：AI芯实战，联系方式：微信 yunqi31</p>
         </div>
 
         {/* Main card */}

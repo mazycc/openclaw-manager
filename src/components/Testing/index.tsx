@@ -36,24 +36,22 @@ export function Testing() {
     } catch (e) {
       testingLogger.error('Diagnostics execution failed', e);
       setDiagnosticResults([{
-        name: 'Diagnostics Execution',
+        name: '诊断执行',
         passed: false,
         message: String(e),
-        suggestion: 'Please check if OpenClaw is properly installed',
+        suggestion: '请检查 OpenClaw 是否已正确安装',
       }]);
     } finally {
       setLoading(false);
     }
   };
 
-  // Count results
   const passedCount = diagnosticResults.filter(r => r.passed).length;
   const failedCount = diagnosticResults.filter(r => !r.passed).length;
 
   return (
     <div className="h-full overflow-y-auto scroll-container pr-2">
       <div className="max-w-4xl space-y-6">
-        {/* Diagnostic test */}
         <div className="bg-dark-700 rounded-2xl p-6 border border-dark-500">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
@@ -61,9 +59,9 @@ export function Testing() {
                 <Stethoscope size={20} className="text-purple-400" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-white">System Diagnostics</h3>
+                <h3 className="text-lg font-semibold text-white">系统诊断</h3>
                 <p className="text-xs text-gray-500">
-                  Check OpenClaw installation and configuration status
+                  检查 OpenClaw 的安装与配置状态
                 </p>
               </div>
             </div>
@@ -77,27 +75,25 @@ export function Testing() {
               ) : (
                 <Play size={16} />
               )}
-              Run Diagnostics
+              开始诊断
             </button>
           </div>
 
-          {/* Diagnostic results summary */}
           {diagnosticResults.length > 0 && (
             <div className="flex gap-4 mb-4 p-3 bg-dark-600 rounded-lg">
               <div className="flex items-center gap-2">
                 <CheckCircle size={16} className="text-green-400" />
-                <span className="text-sm text-green-400">{passedCount} passed</span>
+                <span className="text-sm text-green-400">通过 {passedCount} 项</span>
               </div>
               {failedCount > 0 && (
                 <div className="flex items-center gap-2">
                   <XCircle size={16} className="text-red-400" />
-                  <span className="text-sm text-red-400">{failedCount} failed</span>
+                  <span className="text-sm text-red-400">失败 {failedCount} 项</span>
                 </div>
               )}
             </div>
           )}
 
-          {/* Diagnostic results list */}
           {diagnosticResults.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -129,7 +125,7 @@ export function Testing() {
                     <p className="text-xs text-gray-400 mt-1 whitespace-pre-wrap break-words">{result.message}</p>
                     {result.suggestion && (
                       <p className="text-xs text-amber-400 mt-1">
-                        💡 {result.suggestion}
+                        提示：{result.suggestion}
                       </p>
                     )}
                   </div>
@@ -138,22 +134,20 @@ export function Testing() {
             </motion.div>
           )}
 
-          {/* Empty state */}
           {diagnosticResults.length === 0 && !loading && (
             <div className="text-center py-8 text-gray-500">
               <Stethoscope size={48} className="mx-auto mb-3 opacity-30" />
-              <p>Click "Run Diagnostics" button to start checking system status</p>
+              <p>点击“开始诊断”以检查当前系统状态</p>
             </div>
           )}
         </div>
 
-        {/* Instructions */}
         <div className="bg-dark-700/50 rounded-xl p-4 border border-dark-500">
-          <h4 className="text-sm font-medium text-gray-400 mb-2">Diagnostic Instructions</h4>
+          <h4 className="text-sm font-medium text-gray-400 mb-2">诊断说明</h4>
           <ul className="text-sm text-gray-500 space-y-1">
-            <li>• System diagnostics checks Node.js, OpenClaw installation, config files and other status</li>
-            <li>• For AI connection testing, go to <span className="text-claw-400">AI Configuration</span> page</li>
-            <li>• For channel testing, go to <span className="text-claw-400">Message Channels</span> page</li>
+            <li>系统诊断会检查 Node.js、OpenClaw 安装、配置文件等状态。</li>
+            <li>如果要测试 AI 连接，请前往 <span className="text-claw-400">AI 配置</span> 页面。</li>
+            <li>如果要测试消息渠道，请前往 <span className="text-claw-400">消息渠道</span> 页面。</li>
           </ul>
         </div>
       </div>

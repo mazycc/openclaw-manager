@@ -59,7 +59,7 @@ export function ServiceManager() {
       await fetchLogs();
     } catch (e) {
       serviceLogger.error(`❌ ${action} failed`, e);
-      alert(`Operation failed: ${e}`);
+      alert(`操作失败：${e}`);
     } finally {
       setActionLoading(null);
     }
@@ -97,7 +97,7 @@ export function ServiceManager() {
             ) : (
               <Play size={16} />
             )}
-            Start
+            启动
           </button>
 
           <button
@@ -114,7 +114,7 @@ export function ServiceManager() {
             ) : (
               <Square size={16} />
             )}
-            Stop
+            停止
           </button>
 
           <button
@@ -131,7 +131,7 @@ export function ServiceManager() {
             ) : (
               <RotateCcw size={16} />
             )}
-            Restart
+            重启
           </button>
         </div>
 
@@ -145,7 +145,7 @@ export function ServiceManager() {
               onChange={(e) => setAutoRefresh(e.target.checked)}
               className="w-4 h-4 rounded border-dark-500 bg-dark-600 text-claw-500 focus:ring-claw-500"
             />
-            Auto refresh
+            自动刷新
           </label>
 
           <button
@@ -167,7 +167,7 @@ export function ServiceManager() {
           </span>
           <div className="flex-1" />
           <span className="text-xs text-gray-500">
-            {logs.length} lines
+            {logs.length} 行
           </span>
         </div>
 
@@ -177,7 +177,7 @@ export function ServiceManager() {
             <div className="h-full flex items-center justify-center text-gray-500">
               <div className="text-center">
                 <FileText size={32} className="mx-auto mb-2 opacity-50" />
-                <p>No logs available</p>
+                <p>暂无日志</p>
               </div>
             </div>
           ) : (

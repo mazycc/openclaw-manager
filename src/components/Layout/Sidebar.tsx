@@ -3,7 +3,6 @@ import {
   LayoutDashboard,
   Bot,
   MessageSquare,
-
   ScrollText,
   Settings,
   Blocks,
@@ -26,35 +25,33 @@ interface SidebarProps {
 }
 
 const menuItems: { id: PageType; label: string; icon: React.ElementType }[] = [
-  { id: 'dashboard', label: 'Overview', icon: LayoutDashboard },
-  { id: 'mcp', label: 'MCPs', icon: Blocks },
-  { id: 'skills', label: 'Skills', icon: Book },
-  { id: 'agents', label: 'Agents', icon: Users },
-  { id: 'ai', label: 'AI Config', icon: Bot },
-  { id: 'channels', label: 'Channels', icon: MessageSquare },
-
-  { id: 'logs', label: 'Logs', icon: ScrollText },
-  { id: 'settings', label: 'Settings', icon: Settings },
+  { id: 'dashboard', label: '概览', icon: LayoutDashboard },
+  { id: 'mcp', label: 'MCP 服务', icon: Blocks },
+  { id: 'skills', label: '技能', icon: Book },
+  { id: 'agents', label: '智能体', icon: Users },
+  { id: 'ai', label: 'AI 配置', icon: Bot },
+  { id: 'channels', label: '消息渠道', icon: MessageSquare },
+  { id: 'logs', label: '日志', icon: ScrollText },
+  { id: 'settings', label: '设置', icon: Settings },
 ];
 
 export function Sidebar({ currentPage, onNavigate, serviceStatus }: SidebarProps) {
   const isRunning = serviceStatus?.running ?? false;
+
   return (
     <aside className="w-64 bg-dark-800 border-r border-dark-600 flex flex-col">
-      {/* Logo area (macOS titlebar drag) */}
       <div className="h-14 flex items-center px-6 titlebar-drag border-b border-dark-600">
         <div className="flex items-center gap-3 titlebar-no-drag">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-claw-400 to-claw-600 flex items-center justify-center">
-            <span className="text-lg">🦞</span>
+            <span className="text-lg">🧃</span>
           </div>
           <div>
             <h1 className="text-sm font-semibold leading-tight text-white">OpenClaw小白安装工具</h1>
-            <p className="text-[11px] text-gray-500">公众号：AI芯实战</p>
+            <p className="text-[11px] text-gray-400">使用问题关注公众号：AI芯实战</p>
           </div>
         </div>
       </div>
 
-      {/* Navigation menu */}
       <nav className="flex-1 py-4 px-3">
         <ul className="space-y-1">
           {menuItems.map((item) => {
@@ -88,20 +85,19 @@ export function Sidebar({ currentPage, onNavigate, serviceStatus }: SidebarProps
         </ul>
       </nav>
 
-      {/* Footer info */}
       <div className="p-4 border-t border-dark-600">
         <div className="px-4 py-3 bg-dark-700 rounded-lg">
           <div className="flex items-center gap-2 mb-2">
             <div className={clsx('status-dot', isRunning ? 'running' : 'stopped')} />
             <span className="text-xs text-gray-400">
-              {isRunning ? 'Service Running' : 'Service Stopped'}
+              {isRunning ? '服务运行中' : '服务未启动'}
             </span>
           </div>
-          <p className="text-xs text-gray-500">Port: {serviceStatus?.port ?? 18789}</p>
+          <p className="text-xs text-gray-500">端口：{serviceStatus?.port ?? 18789}</p>
         </div>
         <div className="mt-3 px-4 py-3 bg-dark-700 rounded-lg">
-          <p className="text-[11px] text-gray-500">微信：yunqi31</p>
-          <p className="text-[11px] text-gray-500">公众号：AI芯实战</p>
+          <p className="text-[11px] text-gray-300">使用问题关注公众号：AI芯实战</p>
+          <p className="text-[11px] text-gray-400">联系方式：微信 yunqi31</p>
         </div>
       </div>
     </aside>

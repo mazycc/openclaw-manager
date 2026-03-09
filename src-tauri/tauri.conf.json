@@ -43,8 +43,7 @@
     ],
     "category": "Utility",
     "shortDescription": "OpenClaw 小白安装与管理工具",
-    "longDescription": "OpenClaw小白安装工具是一款基于 Tauri 的跨平台桌面工具，用于安装、配置和管理 OpenClaw 服务。",
-    "copyright": "Copyright © 2026 微信：yunqi31 | 公众号：AI芯实战",
+    "copyright": "Copyright © 2026 使用问题关注公众号：AI芯实战 | 联系方式：微信 yunqi31",
     "macOS": {
       "minimumSystemVersion": "10.15",
       "entitlements": null,

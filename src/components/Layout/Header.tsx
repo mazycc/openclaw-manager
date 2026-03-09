@@ -9,15 +9,14 @@ interface HeaderProps {
 }
 
 const pageTitles: Record<PageType, { title: string; description: string }> = {
-  dashboard: { title: 'Overview', description: 'Service status, logs and quick actions' },
-  mcp: { title: 'MCP Servers', description: 'Manage Model Context Protocol servers' },
-  skills: { title: 'Skills', description: 'Manage OpenClaw skills' },
-  ai: { title: 'AI Model Configuration', description: 'Configure AI providers and models' },
-  channels: { title: 'Message Channels', description: 'Configure Telegram, Discord, Lark, etc.' },
-  agents: { title: 'Agent Routing', description: 'Manage agents and binding rules' },
-
-  logs: { title: 'Application Logs', description: 'View Manager application console logs' },
-  settings: { title: 'Settings', description: 'Identity configuration and advanced options' },
+  dashboard: { title: '概览', description: '服务状态、日志与快捷操作' },
+  mcp: { title: 'MCP 服务', description: '管理 Model Context Protocol 服务' },
+  skills: { title: '技能', description: '管理 OpenClaw 技能' },
+  ai: { title: 'AI 配置', description: '配置 AI 提供商与模型' },
+  channels: { title: '消息通道', description: '配置 Telegram、Discord、Lark 等通道' },
+  agents: { title: '智能体路由', description: '管理智能体及其绑定规则' },
+  logs: { title: '应用日志', description: '查看应用控制台日志' },
+  settings: { title: '设置', description: '身份配置与高级选项' },
 };
 
 export function Header({ currentPage }: HeaderProps) {
@@ -52,7 +51,7 @@ export function Header({ currentPage }: HeaderProps) {
         <button
           onClick={() => window.location.reload()}
           className="icon-button text-gray-400 hover:text-white"
-          title="Refresh"
+          title="刷新"
         >
           <RefreshCw size={16} />
         </button>
@@ -60,10 +59,10 @@ export function Header({ currentPage }: HeaderProps) {
           onClick={handleOpenDashboard}
           disabled={opening}
           className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-dark-600 hover:bg-dark-500 text-sm text-gray-300 hover:text-white transition-colors disabled:opacity-50"
-          title="Open Web Dashboard"
+          title="打开 Web 控制台"
         >
           {opening ? <Loader2 size={14} className="animate-spin" /> : <ExternalLink size={14} />}
-          <span>Dashboard</span>
+          <span>控制台</span>
         </button>
       </div>
     </header>

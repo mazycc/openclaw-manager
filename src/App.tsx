@@ -77,13 +77,13 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
       return (
         <div className="p-8 text-center">
           <AlertCircle size={48} className="mx-auto text-red-400 mb-4" />
-          <h2 className="text-xl font-bold text-white mb-2">Something went wrong</h2>
+          <h2 className="text-xl font-bold text-white mb-2">出现了一点问题</h2>
           <p className="text-red-200 mb-4">{this.state.error?.message}</p>
           <button
             onClick={() => this.setState({ hasError: false })}
             className="px-4 py-2 bg-dark-700 hover:bg-dark-600 rounded-lg text-white text-sm"
           >
-            Try again
+            重试
           </button>
         </div>
       );
@@ -204,7 +204,7 @@ function App() {
     } catch (e) {
       setUpdateResult({
         success: false,
-        message: 'Error occurred during update',
+        message: '更新过程中出现错误',
         error: String(e),
       });
     } finally {
@@ -235,7 +235,7 @@ function App() {
             break;
         }
       });
-      setManagerUpdateResult({ success: true, message: 'Update installed successfully! Restarting...' });
+      setManagerUpdateResult({ success: true, message: '更新安装成功，正在重启...' });
 
       // Restart app after 2 seconds
       setTimeout(async () => {
@@ -248,7 +248,7 @@ function App() {
       }, 2000);
     } catch (e: any) {
       appLogger.error('Manager update download failed', e);
-      setManagerUpdateResult({ success: false, message: 'Update failed', error: e?.message || String(e) });
+      setManagerUpdateResult({ success: false, message: '更新失败', error: e?.message || String(e) });
       setManagerUpdating(false);
     }
   };
@@ -346,7 +346,7 @@ function App() {
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-gradient-to-br from-brand-500 to-purple-600 mb-4 animate-pulse shadow-lg shadow-purple-900/20">
           <span className="text-3xl">🦞</span>
         </div>
-        <p className="text-dark-400 font-medium">Loading component...</p>
+        <p className="text-dark-400 font-medium">页面加载中...</p>
       </div>
     </div>
   );
@@ -371,10 +371,10 @@ function App() {
                 <AlertCircle size={20} className="text-white" />
                 <div>
                   <p className="text-sm font-bold text-white">
-                    Security Warning: Your OpenClaw version ({secureVersionInfo.current_version}) is insecure.
+                    安全警告：你当前的 OpenClaw 版本（{secureVersionInfo.current_version}）存在风险。
                   </p>
                   <p className="text-xs text-white/90">
-                    A version &ge; 2026.1.29 is required. Please update immediately.
+                    需要升级到 `2026.1.29` 或更高版本，请尽快更新。
                   </p>
                 </div>
               </div>
@@ -415,10 +415,10 @@ function App() {
                   ) : (
                     <>
                       <p className="text-sm font-medium text-white">
-                        New version available: OpenClaw {updateInfo.latest_version}
+                        发现 OpenClaw 新版本：{updateInfo.latest_version}
                       </p>
                       <p className="text-xs text-white/70">
-                        Current version: {updateInfo.current_version}
+                        当前版本：{updateInfo.current_version}
                       </p>
                     </>
                   )}
@@ -435,12 +435,12 @@ function App() {
                     {updating ? (
                       <>
                         <Loader2 size={14} className="animate-spin" />
-                        Updating...
+                        更新中...
                       </>
                     ) : (
                       <>
                         <Download size={14} />
-                        Update Now
+                        立即更新
                       </>
                     )}
                   </button>
@@ -487,7 +487,7 @@ function App() {
                     <>
                       <div className="flex justify-between items-center pr-4">
                         <p className="text-sm font-medium text-white">
-                          New version available: Manager v{managerUpdateVersion}
+                          发现管理器新版本：v{managerUpdateVersion}
                         </p>
                         {managerUpdating && (
                           <span className="text-xs text-white/80">{managerUpdateProgress}%</span>
@@ -516,12 +516,12 @@ function App() {
                     {managerUpdating ? (
                       <>
                         <Loader2 size={14} className="animate-spin" />
-                        Updating...
+                        更新中...
                       </>
                     ) : (
                       <>
                         <Download size={14} />
-                        Update Now
+                        立即更新
                       </>
                     )}
                   </button>

@@ -339,9 +339,9 @@ export function Agents() {
                     <div>
                         <h2 className="text-xl font-semibold text-white flex items-center gap-2">
                             <Users className="text-claw-400" size={24} />
-                            Agents
+                            智能体
                         </h2>
-                        <p className="text-sm text-gray-500">Manage agent definitions and overrides</p>
+                        <p className="text-sm text-gray-500">管理智能体定义与覆盖配置</p>
                     </div>
                     <div className="flex gap-2">
                         <button
@@ -358,7 +358,7 @@ export function Agents() {
                             className="btn-secondary flex items-center gap-2"
                         >
                             <Zap size={16} />
-                            Quick Setup
+                            快速配置
                         </button>
                         <button
                             onClick={() => {
@@ -370,7 +370,7 @@ export function Agents() {
                             className="btn-primary flex items-center gap-2"
                         >
                             <Plus size={16} />
-                            Add Agent
+                            新增智能体
                         </button>
                     </div>
                 </div>
@@ -378,7 +378,7 @@ export function Agents() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {agents.length === 0 ? (
                         <div className="col-span-full p-8 text-center text-gray-500 bg-dark-700/50 rounded-xl border border-dashed border-dark-600">
-                            No agents configured. Create one to get started.
+                            还没有配置任何智能体，先创建一个开始使用。
                         </div>
                     ) : (
                         agents.map(agent => (

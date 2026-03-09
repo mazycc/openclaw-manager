@@ -184,7 +184,7 @@ export function Settings({ onEnvironmentChange }: SettingsProps) {
       setTimeout(() => setSaveSuccess(false), 2000);
     } catch (e) {
       console.error('Failed to save:', e);
-      alert('Failed to save settings: ' + String(e));
+      alert('保存设置失败：' + String(e));
     } finally {
       setSaving(false);
     }
@@ -199,7 +199,7 @@ export function Settings({ onEnvironmentChange }: SettingsProps) {
       const jsonStr = JSON.stringify(currentConfig, null, 2);
 
       await invoke<string>('validate_openclaw_config', { configJson: jsonStr });
-      setValidateStatus({ success: true, message: 'Configuration is valid according to the CLI schema.' });
+      setValidateStatus({ success: true, message: '当前配置已通过 CLI Schema 校验。' });
     } catch (e) {
       setValidateStatus({ success: false, message: String(e) });
     } finally {
@@ -219,16 +219,16 @@ export function Settings({ onEnvironmentChange }: SettingsProps) {
 
       if (path) {
         await invoke('export_config', { path });
-        alert('Configuration exported successfully!');
+        alert('配置导出成功');
       }
     } catch (e) {
       console.error('Export failed:', e);
-      alert('Failed to export configuration: ' + String(e));
+      alert('导出配置失败：' + String(e));
     }
   };
 
   const handleImport = async () => {
-    if (!confirm('Importing configuration will overwrite your current settings. Continue?')) return;
+    if (!confirm('导入配置会覆盖当前设置，是否继续？')) return;
 
     try {
       const path = await open({
@@ -240,13 +240,13 @@ export function Settings({ onEnvironmentChange }: SettingsProps) {
 
       if (path) {
         await invoke('import_config', { path });
-        alert('Configuration imported successfully! Please restart the manager to apply all changes.');
+        alert('配置导入成功，请重启管理器以应用全部变更。');
         // Reload settings to reflect changes
         window.location.reload();
       }
     } catch (e) {
       console.error('Import failed:', e);
-      alert('Failed to import configuration: ' + String(e));
+      alert('导入配置失败：' + String(e));
     }
   };
 
@@ -263,7 +263,7 @@ export function Settings({ onEnvironmentChange }: SettingsProps) {
     } catch (e) {
       setUninstallResult({
         success: false,
-        message: 'An error occurred during uninstallation',
+        message: '卸载过程中发生错误',
         error: String(e),
       });
     } finally {
@@ -359,19 +359,19 @@ export function Settings({ onEnvironmentChange }: SettingsProps) {
             </div>
             <div className="flex-1">
               <h3 className="text-lg font-semibold text-white">OpenClaw小白安装工具</h3>
-              <p className="text-xs text-gray-500">品牌与联系信息</p>
+              <p className="text-xs text-gray-500">使用帮助与联系信息</p>
             </div>
             <span className="text-xs font-mono text-gray-500 bg-dark-600 px-2 py-1 rounded">v{appVersion}</span>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="p-4 bg-dark-600 rounded-lg border border-dark-500">
-              <p className="text-xs text-gray-500 mb-1">微信</p>
-              <p className="text-sm font-medium text-white">yunqi31</p>
+              <p className="text-xs text-gray-500 mb-1">使用问题关注</p>
+              <p className="text-sm font-medium text-white">公众号：AI芯实战</p>
             </div>
             <div className="p-4 bg-dark-600 rounded-lg border border-dark-500">
-              <p className="text-xs text-gray-500 mb-1">公众号</p>
-              <p className="text-sm font-medium text-white">AI芯实战</p>
+              <p className="text-xs text-gray-500 mb-1">联系方式</p>
+              <p className="text-sm font-medium text-white">微信：yunqi31</p>
             </div>
           </div>
         </div>
@@ -383,16 +383,16 @@ export function Settings({ onEnvironmentChange }: SettingsProps) {
               <Database size={20} className="text-purple-400" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-white">Compaction & Memory</h3>
-              <p className="text-xs text-gray-500">Manage agent memory optimization</p>
+              <h3 className="text-lg font-semibold text-white">压缩与记忆</h3>
+              <p className="text-xs text-gray-500">管理智能体记忆优化</p>
             </div>
           </div>
 
           <div className="space-y-4">
             <div className="flex items-center justify-between p-4 bg-dark-600 rounded-lg">
               <div>
-                <p className="text-sm text-white">Enable Compaction</p>
-                <p className="text-xs text-gray-500">Compress conversation history when it gets too long</p>
+                <p className="text-sm text-white">启用压缩</p>
+                <p className="text-xs text-gray-500">会话历史过长时自动压缩上下文</p>
               </div>
               <input
                 type="checkbox"
@@ -404,7 +404,7 @@ export function Settings({ onEnvironmentChange }: SettingsProps) {
 
             {compaction.enabled && (
               <div className="pl-4 border-l-2 border-dark-600">
-                <label className="block text-sm text-gray-400 mb-2">Token Threshold</label>
+                <label className="block text-sm text-gray-400 mb-2">Token 阈值</label>
                 <input
                   type="number"
                   value={compaction.threshold || ''}
@@ -412,14 +412,14 @@ export function Settings({ onEnvironmentChange }: SettingsProps) {
                   placeholder="e.g. 8000"
                   className="input-base"
                 />
-                <p className="text-xs text-gray-500 mt-1">Number of tokens before compaction triggers.</p>
+                <p className="text-xs text-gray-500 mt-1">达到该 Token 数后会触发压缩。</p>
               </div>
             )}
 
             <div className="flex items-center justify-between p-4 bg-dark-600 rounded-lg">
               <div>
-                <p className="text-sm text-white">Context Pruning</p>
-                <p className="text-xs text-gray-500">Limit the number of recent messages kept in context</p>
+                <p className="text-sm text-white">上下文裁剪</p>
+                <p className="text-xs text-gray-500">限制上下文中保留的最近消息数量</p>
               </div>
               <input
                 type="checkbox"
@@ -431,7 +431,7 @@ export function Settings({ onEnvironmentChange }: SettingsProps) {
 
             {compaction.context_pruning && (
               <div className="pl-4 border-l-2 border-dark-600">
-                <label className="block text-sm text-gray-400 mb-2">Max Messages</label>
+                <label className="block text-sm text-gray-400 mb-2">最大消息数</label>
                 <input
                   type="number"
                   value={compaction.max_context_messages || ''}
@@ -439,21 +439,21 @@ export function Settings({ onEnvironmentChange }: SettingsProps) {
                   placeholder="e.g. 50"
                   className="input-base"
                 />
-                <p className="text-xs text-gray-500 mt-1">Maximum number of recent messages to keep.</p>
+                <p className="text-xs text-gray-500 mt-1">允许保留的最近消息上限。</p>
               </div>
             )}
 
             <div className="flex items-center justify-between p-4 bg-dark-600 rounded-lg">
               <div>
-                <p className="text-sm text-white">Local Memory Search</p>
-                <p className="text-xs text-gray-500">Enable offline embeddings mapping</p>
+                <p className="text-sm text-white">本地记忆检索</p>
+                <p className="text-xs text-gray-500">启用离线向量映射能力</p>
               </div>
               <select
                 value={memoryConfig.provider || ''}
                 onChange={e => setMemoryConfig({ ...memoryConfig, provider: e.target.value || null })}
                 className="input-base w-auto min-w-[120px]"
               >
-                <option value="">None (Disabled)</option>
+                <option value="">无（已禁用）</option>
                 <option value="ollama">Ollama</option>
               </select>
             </div>
@@ -467,14 +467,14 @@ export function Settings({ onEnvironmentChange }: SettingsProps) {
               <Clock size={20} className="text-orange-400" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-white">Workspace</h3>
-              <p className="text-xs text-gray-500">Time and localization settings</p>
+              <h3 className="text-lg font-semibold text-white">工作区</h3>
+              <p className="text-xs text-gray-500">时间与本地化设置</p>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm text-gray-400 mb-2">Timezone</label>
+              <label className="block text-sm text-gray-400 mb-2">时区</label>
               <select
                 value={workspace.timezone || 'Asia/Shanghai'}
                 onChange={e => setWorkspace({ ...workspace, timezone: e.target.value })}
@@ -490,13 +490,13 @@ export function Settings({ onEnvironmentChange }: SettingsProps) {
               </select>
             </div>
             <div>
-              <label className="block text-sm text-gray-400 mb-2">Time Format</label>
+              <label className="block text-sm text-gray-400 mb-2">时间格式</label>
               <select
                 value={workspace.time_format || ''}
                 onChange={e => setWorkspace({ ...workspace, time_format: e.target.value || null })}
                 className="input-base"
               >
-                <option value="">Default (24h)</option>
+                <option value="">默认（24 小时制）</option>
                 <option value="12h">12h (AM/PM)</option>
                 <option value="24h">24h</option>
               </select>
@@ -511,14 +511,14 @@ export function Settings({ onEnvironmentChange }: SettingsProps) {
               <Server size={20} className="text-cyan-400" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-white">Gateway Settings</h3>
-              <p className="text-xs text-gray-500">Network and logging configuration</p>
+              <h3 className="text-lg font-semibold text-white">网关设置</h3>
+              <p className="text-xs text-gray-500">网络与日志配置</p>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm text-gray-400 mb-2">Gateway Port</label>
+              <label className="block text-sm text-gray-400 mb-2">网关端口</label>
               <input
                 type="number"
                 value={gateway.port}
@@ -526,20 +526,20 @@ export function Settings({ onEnvironmentChange }: SettingsProps) {
                 className="input-base"
               />
               <p className="text-xs text-yellow-500/80 mt-1 flex items-center gap-1">
-                <AlertTriangle size={12} /> Requires restart
+                <AlertTriangle size={12} /> 修改后需要重启
               </p>
             </div>
             <div>
-              <label className="block text-sm text-gray-400 mb-2">Log Level</label>
+              <label className="block text-sm text-gray-400 mb-2">日志级别</label>
               <select
                 value={gateway.log_level}
                 onChange={e => setGateway({ ...gateway, log_level: e.target.value })}
                 className="input-base"
               >
-                <option value="debug">Debug</option>
-                <option value="info">Info</option>
-                <option value="warn">Warn</option>
-                <option value="error">Error</option>
+                <option value="debug">调试</option>
+                <option value="info">信息</option>
+                <option value="warn">警告</option>
+                <option value="error">错误</option>
               </select>
             </div>
           </div>
@@ -552,14 +552,14 @@ export function Settings({ onEnvironmentChange }: SettingsProps) {
               <GitMerge size={20} className="text-indigo-400" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-white">Subagent Defaults</h3>
-              <p className="text-xs text-gray-500">Global limits for nested subagent spawning</p>
+              <h3 className="text-lg font-semibold text-white">子智能体默认值</h3>
+              <p className="text-xs text-gray-500">控制多层级子智能体生成的全局限制</p>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm text-gray-400 mb-2">Max Spawn Depth</label>
+              <label className="block text-sm text-gray-400 mb-2">最大生成深度</label>
               <input
                 type="number"
                 min={0}
@@ -569,10 +569,10 @@ export function Settings({ onEnvironmentChange }: SettingsProps) {
                 className="input-base"
                 placeholder="2"
               />
-              <p className="text-xs text-gray-600 mt-1">Nesting levels</p>
+              <p className="text-xs text-gray-600 mt-1">嵌套层级</p>
             </div>
             <div>
-              <label className="block text-sm text-gray-400 mb-2">Max Children / Agent</label>
+              <label className="block text-sm text-gray-400 mb-2">每个智能体最大子项数</label>
               <input
                 type="number"
                 min={0}
@@ -582,10 +582,10 @@ export function Settings({ onEnvironmentChange }: SettingsProps) {
                 className="input-base"
                 placeholder="5"
               />
-              <p className="text-xs text-gray-600 mt-1">Per parent</p>
+              <p className="text-xs text-gray-600 mt-1">按父智能体计算</p>
             </div>
             <div>
-              <label className="block text-sm text-gray-400 mb-2">Max Concurrent</label>
+              <label className="block text-sm text-gray-400 mb-2">最大并发数</label>
               <input
                 type="number"
                 min={0}
@@ -595,15 +595,15 @@ export function Settings({ onEnvironmentChange }: SettingsProps) {
                 className="input-base"
                 placeholder="8"
               />
-              <p className="text-xs text-gray-600 mt-1">System-wide</p>
+              <p className="text-xs text-gray-600 mt-1">全局范围</p>
             </div>
           </div>
 
           <div className="mt-4 pt-4 border-t border-dark-600">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <p className="text-sm text-white">Inline File Attachments</p>
-                <p className="text-xs text-gray-500">Allow subagents to process files</p>
+                <p className="text-sm text-white">内联文件附件</p>
+                <p className="text-xs text-gray-500">允许子智能体处理文件</p>
               </div>
               <input
                 type="checkbox"
@@ -615,7 +615,7 @@ export function Settings({ onEnvironmentChange }: SettingsProps) {
 
             {subagentDefaults.attachments_enabled && (
               <div className="pl-4 border-l-2 border-dark-600">
-                <label className="block text-sm text-gray-400 mb-2">Max Total Size (Bytes)</label>
+                <label className="block text-sm text-gray-400 mb-2">最大总大小（字节）</label>
                 <input
                   type="number"
                   value={subagentDefaults.attachments_max_total_bytes || ''}
@@ -623,7 +623,7 @@ export function Settings({ onEnvironmentChange }: SettingsProps) {
                   placeholder="e.g. 5242880 (5MB)"
                   className="input-base"
                 />
-                <p className="text-xs text-gray-500 mt-1">Limit across standard session attachment drops.</p>
+                <p className="text-xs text-gray-500 mt-1">限制普通会话中附件拖拽的总大小。</p>
               </div>
             )}
           </div>
@@ -636,8 +636,8 @@ export function Settings({ onEnvironmentChange }: SettingsProps) {
               <FileJson size={20} className="text-slate-400" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-white">Configuration Management</h3>
-              <p className="text-xs text-gray-500">Backup and restore settings</p>
+              <h3 className="text-lg font-semibold text-white">配置管理</h3>
+              <p className="text-xs text-gray-500">备份与恢复设置</p>
             </div>
           </div>
 
@@ -647,14 +647,14 @@ export function Settings({ onEnvironmentChange }: SettingsProps) {
               className="flex-1 flex items-center justify-center gap-2 p-3 bg-dark-600 hover:bg-dark-500 rounded-lg transition-colors text-sm text-white border border-dark-500 hover:border-dark-400"
             >
               <Download size={16} />
-              Export Config
+              导出配置
             </button>
             <button
               onClick={handleImport}
               className="flex-1 flex items-center justify-center gap-2 p-3 bg-dark-600 hover:bg-dark-500 rounded-lg transition-colors text-sm text-white border border-dark-500 hover:border-dark-400"
             >
               <Upload size={16} />
-              Import Config
+              导入配置
             </button>
           </div>
           <div className="mt-4 pt-4 border-t border-dark-600">
@@ -664,7 +664,7 @@ export function Settings({ onEnvironmentChange }: SettingsProps) {
               className="w-full flex items-center justify-center gap-2 p-3 bg-dark-600 hover:bg-dark-500 rounded-lg transition-colors text-sm text-white border border-dark-500 hover:border-dark-400"
             >
               {validating ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle size={16} />}
-              Validate Config Schema
+              校验配置格式
             </button>
             {validateStatus && (
               <div className={`mt-3 p-3 rounded-lg text-sm border ${validateStatus.success ? 'bg-green-900/20 border-green-800/30 text-green-400' : 'bg-red-900/20 border-red-800/30 text-red-400 whitespace-pre-line'}`}>
@@ -681,15 +681,15 @@ export function Settings({ onEnvironmentChange }: SettingsProps) {
               <Globe size={20} className="text-blue-400" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-white">Browser Control</h3>
-              <p className="text-xs text-gray-500">Configure built-in browser capabilities</p>
+              <h3 className="text-lg font-semibold text-white">浏览器能力</h3>
+              <p className="text-xs text-gray-500">配置内置浏览器能力</p>
             </div>
           </div>
 
           <div className="flex items-center justify-between p-4 bg-dark-600 rounded-lg mb-4">
             <div>
-              <p className="text-sm text-white">Enable Browser Tool</p>
-              <p className="text-xs text-gray-500">Allow agents to browse the web</p>
+              <p className="text-sm text-white">启用浏览器工具</p>
+              <p className="text-xs text-gray-500">允许智能体访问网页</p>
             </div>
             <input
               type="checkbox"
@@ -702,8 +702,8 @@ export function Settings({ onEnvironmentChange }: SettingsProps) {
           {browser.enabled && (
             <div className="flex items-center justify-between p-4 bg-dark-600 rounded-lg">
               <div>
-                <p className="text-sm text-white">Browser Chrome Color</p>
-                <p className="text-xs text-gray-500">Custom color for the browser window</p>
+                <p className="text-sm text-white">浏览器顶栏颜色</p>
+                <p className="text-xs text-gray-500">自定义浏览器窗口颜色</p>
               </div>
               <div className="flex items-center gap-3">
                 <input
@@ -712,7 +712,7 @@ export function Settings({ onEnvironmentChange }: SettingsProps) {
                   onChange={e => setBrowser({ ...browser, color: e.target.value })}
                   className="w-8 h-8 rounded overflow-hidden cursor-pointer border-0 p-0"
                 />
-                <span className="text-sm font-mono text-gray-400">{browser.color || 'Default'}</span>
+                <span className="text-sm font-mono text-gray-400">{browser.color || '默认'}</span>
               </div>
             </div>
           )}
@@ -725,32 +725,32 @@ export function Settings({ onEnvironmentChange }: SettingsProps) {
               <Server size={20} className="text-red-400" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-white">Tools & Security</h3>
-              <p className="text-xs text-gray-500">Manage tool access profiles and settings</p>
+              <h3 className="text-lg font-semibold text-white">工具与安全</h3>
+              <p className="text-xs text-gray-500">管理工具访问策略与设置</p>
             </div>
           </div>
 
           <div className="space-y-6">
             <div>
-              <label className="block text-sm text-gray-400 mb-2">Security Profile</label>
+              <label className="block text-sm text-gray-400 mb-2">安全配置档</label>
               <select
                 value={toolsProfile}
                 onChange={e => setToolsProfile(e.target.value)}
                 className="input-base"
               >
-                <option value="messaging">Messaging (Safest)</option>
-                <option value="minimal">Minimal</option>
-                <option value="coding">Coding</option>
-                <option value="full">Full Access</option>
+                <option value="messaging">消息场景（最安全）</option>
+                <option value="minimal">最小权限</option>
+                <option value="coding">代码开发</option>
+                <option value="full">完全访问</option>
               </select>
-              <p className="text-xs text-gray-500 mt-1">Configures baseline allowlist for built-in tools across all agents.</p>
+              <p className="text-xs text-gray-500 mt-1">配置所有智能体默认可访问的内置工具白名单。</p>
             </div>
 
             <div className="pt-4 border-t border-dark-600">
-              <h4 className="text-sm font-medium text-white mb-4">Native PDF Support</h4>
+              <h4 className="text-sm font-medium text-white mb-4">原生 PDF 支持</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm text-gray-400 mb-2">Max Pages</label>
+                  <label className="block text-sm text-gray-400 mb-2">最大页数</label>
                   <input
                     type="number"
                     value={pdfConfig.max_pages || ''}
@@ -760,7 +760,7 @@ export function Settings({ onEnvironmentChange }: SettingsProps) {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-2">Max Size (MB)</label>
+                  <label className="block text-sm text-gray-400 mb-2">最大大小（MB）</label>
                   <input
                     type="number"
                     value={pdfConfig.max_bytes_mb || ''}
@@ -781,8 +781,8 @@ export function Settings({ onEnvironmentChange }: SettingsProps) {
               <Globe size={20} className="text-orange-400" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-white">Web Search</h3>
-              <p className="text-xs text-gray-500">Configure search engine APIs</p>
+              <h3 className="text-lg font-semibold text-white">网络搜索</h3>
+              <p className="text-xs text-gray-500">配置搜索引擎 API</p>
             </div>
           </div>
 
@@ -796,7 +796,7 @@ export function Settings({ onEnvironmentChange }: SettingsProps) {
                 placeholder="BSA-..."
                 className="input-base"
               />
-              <p className="text-xs text-gray-500 mt-1">Required for agents to perform web searches.</p>
+              <p className="text-xs text-gray-500 mt-1">智能体执行网页搜索时需要此密钥。</p>
             </div>
           </div>
         </div>
@@ -808,7 +808,7 @@ export function Settings({ onEnvironmentChange }: SettingsProps) {
               <ArrowUpCircle size={20} className="text-emerald-400" />
             </div>
             <div className="flex-1">
-              <h3 className="text-lg font-semibold text-white">Manager Update</h3>
+              <h3 className="text-lg font-semibold text-white">应用更新</h3>
               <p className="text-xs text-gray-500">保持 OpenClaw小白安装工具 为最新版本</p>
             </div>
             <span className="text-xs font-mono text-gray-500 bg-dark-600 px-2 py-1 rounded">v{appVersion}</span>
@@ -828,8 +828,8 @@ export function Settings({ onEnvironmentChange }: SettingsProps) {
                   <RefreshCw size={18} className="text-emerald-400" />
                 )}
                 <div className="flex-1">
-                  <p className="text-sm text-white">{managerChecking ? 'Checking...' : 'Check for Updates'}</p>
-                  <p className="text-xs text-gray-500">Check GitHub for the latest Manager version</p>
+                  <p className="text-sm text-white">{managerChecking ? '检查中...' : '检查更新'}</p>
+                  <p className="text-xs text-gray-500">检查 GitHub 上是否有新版本</p>
                 </div>
               </button>
             )}
@@ -838,7 +838,7 @@ export function Settings({ onEnvironmentChange }: SettingsProps) {
             {managerCheckDone && !managerUpdateAvailable && (
               <div className="flex items-center gap-3 p-4 bg-emerald-900/20 rounded-lg border border-emerald-800/30">
                 <CheckCircle size={18} className="text-emerald-400" />
-                <p className="text-sm text-emerald-300">You're on the latest version!</p>
+                <p className="text-sm text-emerald-300">当前已经是最新版本</p>
               </div>
             )}
 
@@ -847,7 +847,7 @@ export function Settings({ onEnvironmentChange }: SettingsProps) {
               <div className="p-4 bg-dark-600 rounded-lg space-y-3">
                 <div className="flex items-center gap-2">
                   <Download size={16} className="text-emerald-400" />
-                  <span className="text-sm font-medium text-white">Update available: v{managerUpdateVersion}</span>
+                  <span className="text-sm font-medium text-white">发现新版本：v{managerUpdateVersion}</span>
                 </div>
                 {managerUpdateBody && (
                   <p className="text-xs text-gray-400 whitespace-pre-line max-h-32 overflow-y-auto">{managerUpdateBody}</p>
@@ -872,7 +872,7 @@ export function Settings({ onEnvironmentChange }: SettingsProps) {
                     className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-claw-600 hover:from-emerald-500 hover:to-claw-500 text-white text-sm font-medium rounded-lg transition-all"
                   >
                     <Download size={16} />
-                    Download & Install
+                    下载并安装
                   </button>
                 )}
               </div>
@@ -883,14 +883,14 @@ export function Settings({ onEnvironmentChange }: SettingsProps) {
               <div className="p-4 bg-emerald-900/20 rounded-lg border border-emerald-800/30 space-y-3">
                 <div className="flex items-center gap-2">
                   <CheckCircle size={16} className="text-emerald-400" />
-                  <span className="text-sm font-medium text-emerald-300">Update installed successfully!</span>
+                  <span className="text-sm font-medium text-emerald-300">更新安装成功</span>
                 </div>
                 <button
                   onClick={restartApp}
                   className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium rounded-lg transition-colors"
                 >
                   <RefreshCw size={16} />
-                  Restart Now
+                  立即重启
                 </button>
               </div>
             )}
@@ -911,7 +911,7 @@ export function Settings({ onEnvironmentChange }: SettingsProps) {
             <div className="w-10 h-10 rounded-xl bg-red-500/20 flex items-center justify-center">
               <AlertTriangle size={20} className="text-red-400" />
             </div>
-            <h3 className="text-lg font-semibold text-white">Danger Zone</h3>
+            <h3 className="text-lg font-semibold text-white">危险操作</h3>
           </div>
           <button
             onClick={() => setShowUninstallConfirm(true)}
@@ -919,7 +919,7 @@ export function Settings({ onEnvironmentChange }: SettingsProps) {
           >
             <Trash2 size={18} className="text-red-400" />
             <div className="flex-1">
-              <p className="text-sm text-red-300">Uninstall OpenClaw</p>
+              <p className="text-sm text-red-300">卸载 OpenClaw</p>
             </div>
           </button>
         </div>
@@ -941,7 +941,7 @@ export function Settings({ onEnvironmentChange }: SettingsProps) {
             ) : (
               <Save size={20} />
             )}
-            {saveSuccess ? 'Saved!' : 'Save Settings'}
+            {saveSuccess ? '已保存' : '保存设置'}
           </button>
         </div>
       </div>
@@ -951,19 +951,19 @@ export function Settings({ onEnvironmentChange }: SettingsProps) {
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-dark-700 rounded-2xl p-6 border border-dark-500 max-w-md w-full shadow-2xl">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-white">Uninstall OpenClaw</h3>
+              <h3 className="text-lg font-semibold text-white">卸载 OpenClaw</h3>
               <button onClick={() => setShowUninstallConfirm(false)}><X size={20} className="text-gray-400 hover:text-white" /></button>
             </div>
 
             {!uninstallResult ? (
               <>
-                <p className="text-gray-300 mb-4">Are you sure? This will <span className="text-red-400 font-semibold">permanently delete</span> the entire <code className="bg-dark-600 px-1.5 py-0.5 rounded text-red-300 text-xs">~/.openclaw</code> folder (all configs, agents, and data) and uninstall the OpenClaw CLI.</p>
-                <p className="text-yellow-400/80 text-xs mb-6 flex items-center gap-2"><AlertTriangle size={14} /> This action cannot be undone.</p>
+                <p className="text-gray-300 mb-4">确定继续吗？这会<span className="text-red-400 font-semibold">永久删除</span>整个 <code className="bg-dark-600 px-1.5 py-0.5 rounded text-red-300 text-xs">~/.openclaw</code> 目录（包括全部配置、智能体和数据），并卸载 OpenClaw CLI。</p>
+                <p className="text-yellow-400/80 text-xs mb-6 flex items-center gap-2"><AlertTriangle size={14} /> 此操作不可撤销。</p>
                 <div className="flex gap-3">
-                  <button onClick={() => setShowUninstallConfirm(false)} className="flex-1 btn-secondary">Cancel</button>
+                  <button onClick={() => setShowUninstallConfirm(false)} className="flex-1 btn-secondary">取消</button>
                   <button onClick={handleUninstall} disabled={uninstalling} className="flex-1 btn-primary bg-red-600 hover:bg-red-500 flex justify-center gap-2">
                     {uninstalling ? <Loader2 className="animate-spin" size={16} /> : <Trash2 size={16} />}
-                    Uninstall
+                    卸载
                   </button>
                 </div>
               </>

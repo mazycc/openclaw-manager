@@ -20,14 +20,14 @@ export function StatusCard({ status, loading }: StatusCardProps) {
     if (!seconds) return '--';
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
-    if (hours > 0) return `${hours}h ${minutes}m`;
-    return `${minutes}m`;
+    if (hours > 0) return `${hours}小时 ${minutes}分钟`;
+    return `${minutes}分钟`;
   };
 
   return (
     <div className="bg-dark-700 rounded-2xl p-6 border border-dark-500">
       <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-semibold text-white">Service Status</h3>
+        <h3 className="text-lg font-semibold text-white">服务状态</h3>
         <div className="flex items-center gap-2">
           <div
             className={clsx(
@@ -45,7 +45,7 @@ export function StatusCard({ status, loading }: StatusCardProps) {
                 : 'text-red-400'
             )}
           >
-            {loading ? 'Detecting...' : status?.running ? 'Running' : 'Stopped'}
+            {loading ? '检测中...' : status?.running ? '运行中' : '已停止'}
           </span>
         </div>
       </div>
@@ -54,7 +54,7 @@ export function StatusCard({ status, loading }: StatusCardProps) {
         <div className="bg-dark-600 rounded-xl p-4">
           <div className="flex items-center gap-2 mb-2">
             <Activity size={16} className="text-accent-cyan" />
-            <span className="text-xs text-gray-400">Port</span>
+            <span className="text-xs text-gray-400">端口</span>
           </div>
           <p className="text-xl font-semibold text-white">
             {status?.port || 18789}
@@ -64,7 +64,7 @@ export function StatusCard({ status, loading }: StatusCardProps) {
         <div className="bg-dark-600 rounded-xl p-4">
           <div className="flex items-center gap-2 mb-2">
             <Cpu size={16} className="text-accent-purple" />
-            <span className="text-xs text-gray-400">Process ID</span>
+            <span className="text-xs text-gray-400">进程 ID</span>
           </div>
           <p className="text-xl font-semibold text-white">
             {status?.pid || '--'}
@@ -74,7 +74,7 @@ export function StatusCard({ status, loading }: StatusCardProps) {
         <div className="bg-dark-600 rounded-xl p-4">
           <div className="flex items-center gap-2 mb-2">
             <HardDrive size={16} className="text-accent-green" />
-            <span className="text-xs text-gray-400">Memory</span>
+            <span className="text-xs text-gray-400">内存</span>
           </div>
           <p className="text-xl font-semibold text-white">
             {status?.memory_mb ? `${status.memory_mb.toFixed(1)} MB` : '--'}
@@ -84,7 +84,7 @@ export function StatusCard({ status, loading }: StatusCardProps) {
         <div className="bg-dark-600 rounded-xl p-4">
           <div className="flex items-center gap-2 mb-2">
             <Clock size={16} className="text-accent-amber" />
-            <span className="text-xs text-gray-400">Uptime</span>
+            <span className="text-xs text-gray-400">运行时长</span>
           </div>
           <p className="text-xl font-semibold text-white">
             {formatUptime(status?.uptime_seconds || null)}

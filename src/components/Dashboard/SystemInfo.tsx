@@ -142,7 +142,7 @@ export function SystemInfo() {
   if (loading) {
     return (
       <div className="bg-dark-700 rounded-2xl p-6 border border-dark-500">
-        <h3 className="text-lg font-semibold text-white mb-4">System Requirements</h3>
+        <h3 className="text-lg font-semibold text-white mb-4">系统环境要求</h3>
         <div className="flex items-center justify-center py-8">
           <Loader2 className="w-8 h-8 text-claw-400 animate-spin" />
         </div>
@@ -153,8 +153,8 @@ export function SystemInfo() {
   if (!envStatus) {
     return (
       <div className="bg-dark-700 rounded-2xl p-6 border border-dark-500">
-        <h3 className="text-lg font-semibold text-white mb-4">System Requirements</h3>
-        <p className="text-gray-400 text-sm">Unable to detect system environment.</p>
+        <h3 className="text-lg font-semibold text-white mb-4">系统环境要求</h3>
+        <p className="text-gray-400 text-sm">无法检测当前系统环境。</p>
       </div>
     );
   }
@@ -163,13 +163,13 @@ export function SystemInfo() {
     {
       id: 'nodejs',
       name: 'Node.js',
-      description: 'JavaScript runtime (v22+ required)',
+      description: 'JavaScript 运行环境（需要 v22+）',
       icon: <Cpu size={18} />,
       installed: envStatus.node_installed && envStatus.node_version_ok,
       version: envStatus.node_version,
       versionOk: envStatus.node_version_ok,
       versionNote: envStatus.node_installed && !envStatus.node_version_ok
-        ? 'Version too old, requires v22+'
+        ? '版本过低，需要 v22+'
         : undefined,
       installAction: handleInstallNodejs,
       downloadUrl: 'https://nodejs.org/en/download',
@@ -178,7 +178,7 @@ export function SystemInfo() {
     {
       id: 'git',
       name: 'Git',
-      description: 'Version control for MCP & skill repos',
+      description: '用于 MCP 与技能仓库的版本控制工具',
       icon: <GitBranch size={18} />,
       installed: envStatus.git_installed,
       version: envStatus.git_version,
@@ -188,7 +188,7 @@ export function SystemInfo() {
     {
       id: 'openclaw',
       name: 'OpenClaw',
-      description: 'AI agent framework',
+      description: 'AI 智能体框架',
       icon: <Package size={18} />,
       installed: envStatus.openclaw_installed,
       version: envStatus.openclaw_version,
@@ -198,7 +198,7 @@ export function SystemInfo() {
     ...(envStatus.openclaw_installed ? [{
       id: 'gateway',
       name: 'Gateway Service',
-      description: 'System service (requires admin)',
+      description: '系统服务（需要管理员权限）',
       icon: <Server size={18} />,
       installed: envStatus.gateway_service_installed,
       version: null,
@@ -222,11 +222,11 @@ export function SystemInfo() {
             <Shield size={18} className={allReady ? 'text-green-400' : 'text-amber-400'} />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-white">System Requirements</h3>
+            <h3 className="text-lg font-semibold text-white">系统环境要求</h3>
             <p className="text-xs text-gray-500">
               {allReady
-                ? 'All prerequisites are installed and ready'
-                : `${installedCount}/${totalCount} prerequisites installed`}
+                ? '所有依赖已安装完成'
+                : `已安装 ${installedCount}/${totalCount} 项依赖`}
             </p>
           </div>
         </div>
@@ -234,7 +234,7 @@ export function SystemInfo() {
           onClick={handleRefresh}
           disabled={refreshing}
           className="p-2 text-gray-400 hover:text-white hover:bg-dark-600 rounded-lg transition-colors"
-          title="Re-check requirements"
+          title="重新检查依赖"
         >
           <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
         </button>
@@ -286,7 +286,7 @@ export function SystemInfo() {
             <div className="flex items-center gap-2">
               {req.installed ? (
                 <span className="text-xs text-green-400 font-medium px-2 py-1 bg-green-500/10 rounded-md">
-                  Ready
+                  已就绪
                 </span>
               ) : (
                 <>
@@ -299,12 +299,12 @@ export function SystemInfo() {
                       {installing === req.id ? (
                         <>
                           <Loader2 size={12} className="animate-spin" />
-                          <span>Installing...</span>
+                          <span>安装中...</span>
                         </>
                       ) : (
                         <>
                           <Download size={12} />
-                          <span>Install</span>
+                          <span>安装</span>
                         </>
                       )}
                     </button>
@@ -313,10 +313,10 @@ export function SystemInfo() {
                     <button
                       onClick={() => handleOpenUrl(req.downloadUrl!)}
                       className="flex items-center gap-1.5 px-3 py-1.5 text-gray-300 hover:text-white hover:bg-dark-500 rounded-lg transition-colors text-xs"
-                      title={`Download ${req.name}`}
+                      title={`下载 ${req.name}`}
                     >
                       <ExternalLink size={12} />
-                      <span>Download</span>
+                      <span>下载</span>
                     </button>
                   )}
                 </>

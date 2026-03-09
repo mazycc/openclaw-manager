@@ -28,7 +28,7 @@ export function QuickActions({
 
   return (
     <div className="bg-dark-700 rounded-2xl p-6 border border-dark-500">
-      <h3 className="text-lg font-semibold text-white mb-4">Quick Actions</h3>
+      <h3 className="text-lg font-semibold text-white mb-4">快捷操作</h3>
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         {/* Start button */}
@@ -60,7 +60,7 @@ export function QuickActions({
               isRunning ? 'text-gray-500' : 'text-gray-300'
             )}
           >
-            Start
+            启动
           </span>
         </button>
 
@@ -93,7 +93,7 @@ export function QuickActions({
               !isRunning ? 'text-gray-500' : 'text-gray-300'
             )}
           >
-            Stop
+            停止
           </span>
         </button>
 
@@ -113,7 +113,7 @@ export function QuickActions({
               className={clsx('text-amber-400', loading && 'animate-spin')}
             />
           </div>
-          <span className="text-sm font-medium text-gray-300">Restart</span>
+          <span className="text-sm font-medium text-gray-300">重启</span>
         </button>
 
         {/* Kill All button */}
@@ -129,7 +129,7 @@ export function QuickActions({
           <div className="w-12 h-12 rounded-full flex items-center justify-center bg-rose-500/20">
             <Skull size={20} className="text-rose-400" />
           </div>
-          <span className="text-sm font-medium text-gray-300">Kill All</span>
+          <span className="text-sm font-medium text-gray-300">终止全部</span>
         </button>
 
         {/* Diagnostics button */}
@@ -144,7 +144,7 @@ export function QuickActions({
           <div className="w-12 h-12 rounded-full flex items-center justify-center bg-purple-500/20">
             <Stethoscope size={20} className="text-purple-400" />
           </div>
-          <span className="text-sm font-medium text-gray-300">Diagnostics</span>
+          <span className="text-sm font-medium text-gray-300">诊断</span>
         </button>
       </div>
     </div>

@@ -305,6 +305,13 @@ const channelInfo: Record<
           { value: 'false', label: 'No' },
         ]
       },
+      {
+        key: 'dmPolicy', label: 'DM Policy', type: 'select', options: [
+          { value: 'open', label: 'Open Mode (Recommended)' },
+          { value: 'pairing', label: 'Pairing Mode' },
+          { value: 'disabled', label: 'Disabled' },
+        ]
+      },
     ],
     helpText: 'Get credentials from Feishu Open Platform, Chat ID can be found in group settings',
   },
@@ -634,6 +641,13 @@ export function Channels() {
           form[key] = String(value ?? '');
         }
       });
+
+      // Feishu defaults: keep DM flow usable out of the box.
+      if (channel.channel_type === 'feishu') {
+        if (!form.dmPolicy) form.dmPolicy = 'open';
+        if (!form.requireMention) form.requireMention = 'false';
+      }
+
       setConfigForm(form);
 
       // Load groups (object: { groupId: { requireMention, enabled, groupPolicy, systemPrompt } })
@@ -651,7 +665,12 @@ export function Channels() {
 
       // Load allowFrom (array of user IDs for DM)
       const allowFrom = channel.config.allowFrom as (number | string)[] || [];
-      setAllowFromUsers(Array.isArray(allowFrom) ? allowFrom.map(String) : []);
+      const allowFromUsers = Array.isArray(allowFrom) ? allowFrom.map(String) : [];
+      if (channel.channel_type === 'feishu' && (form.dmPolicy || 'open') === 'open' && allowFromUsers.length === 0) {
+        setAllowFromUsers(['*']);
+      } else {
+        setAllowFromUsers(allowFromUsers);
+      }
 
       // Load groupAllowFrom (array of user IDs for groups)
       const groupAllowFrom = channel.config.groupAllowFrom as (number | string)[] || [];

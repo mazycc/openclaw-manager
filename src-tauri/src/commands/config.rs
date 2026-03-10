@@ -1666,6 +1666,50 @@ pub async fn get_channels_config() -> Result<Vec<ChannelConfig>, String> {
     Ok(channels)
 }
 
+/// Ensure Feishu policy defaults remain actionable after partial UI saves.
+fn apply_feishu_channel_defaults(channel_obj: &mut serde_json::Map<String, Value>) {
+    if channel_obj
+        .get("requireMention")
+        .and_then(|v| v.as_bool())
+        .is_none()
+    {
+        channel_obj.insert("requireMention".to_string(), json!(false));
+    }
+
+    let dm_policy = channel_obj
+        .get("dmPolicy")
+        .and_then(|v| v.as_str())
+        .unwrap_or_default();
+    if !matches!(dm_policy, "open" | "pairing" | "allowlist" | "disabled") {
+        channel_obj.insert("dmPolicy".to_string(), json!("open"));
+    }
+
+    let is_open = channel_obj
+        .get("dmPolicy")
+        .and_then(|v| v.as_str())
+        .map(|s| s == "open")
+        .unwrap_or(false);
+
+    if is_open {
+        match channel_obj.get_mut("allowFrom") {
+            Some(Value::Array(arr)) => {
+                let has_wildcard = arr
+                    .iter()
+                    .any(|v| v.as_str().map(|s| s.trim() == "*").unwrap_or(false));
+                if !has_wildcard {
+                    arr.push(json!("*"));
+                }
+            }
+            Some(_) => {
+                channel_obj.insert("allowFrom".to_string(), json!(["*"]));
+            }
+            None => {
+                channel_obj.insert("allowFrom".to_string(), json!(["*"]));
+            }
+        }
+    }
+}
+
 /// Save channel configuration - save to openclaw.json
 #[command]
 pub async fn save_channel_config(channel: ChannelConfig) -> Result<String, String> {
@@ -1734,6 +1778,15 @@ pub async fn save_channel_config(channel: ChannelConfig) -> Result<String, Strin
             }
         }
         config["channels"][&channel.id] = channel_obj;
+    }
+
+    if channel.id == "feishu" {
+        if let Some(feishu_cfg) = config["channels"]
+            .get_mut(&channel.id)
+            .and_then(|v| v.as_object_mut())
+        {
+            apply_feishu_channel_defaults(feishu_cfg);
+        }
     }
 
     // Cleanup legacy attempts

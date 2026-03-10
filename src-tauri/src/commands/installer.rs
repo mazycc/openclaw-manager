@@ -370,6 +370,12 @@ fn get_windows_node_paths() -> Vec<String> {
             home_str
         ));
 
+        // OpenClaw portable fallback installation path
+        paths.push(format!(
+            "{}\\AppData\\Local\\Programs\\OpenClaw\\nodejs\\node.exe",
+            home_str
+        ));
+
         // chocolatey installation
         paths.push("C:\\ProgramData\\chocolatey\\lib\\nodejs\\tools\\node.exe".to_string());
     }
@@ -696,47 +702,179 @@ async fn install_nodejs_windows() -> Result<InstallResult, String> {
     let script = r#"
 $ErrorActionPreference = 'Stop'
 
-# Check if already installed
-$nodeVersion = node --version 2>$null
-if ($nodeVersion) {
-    Write-Host "Node.js is already installed: $nodeVersion"
-    exit 0
+function Test-NodeInstalled {
+    $nodeVersion = node --version 2>$null
+    if ($nodeVersion) {
+        Write-Host "Node.js is already installed: $nodeVersion"
+        return $true
+    }
+    return $false
 }
 
-# Prefer winget
-$hasWinget = Get-Command winget -ErrorAction SilentlyContinue
-if ($hasWinget) {
-    Write-Host "Installing Node.js using winget..."
-    winget install --id OpenJS.NodeJS.LTS --accept-source-agreements --accept-package-agreements
+function Get-NodeArchToken {
+    if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64" -or $env:PROCESSOR_ARCHITEW6432 -eq "ARM64") {
+        return "arm64"
+    }
+    if ([Environment]::Is64BitOperatingSystem) {
+        return "x64"
+    }
+    return "x86"
+}
+
+function Resolve-LatestNode22Version {
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+    $index = Invoke-RestMethod -Uri "https://nodejs.org/dist/index.json" -UseBasicParsing
+    $latest22 = $index | Where-Object { $_.version -like "v22.*" } | Select-Object -First 1
+    if (-not $latest22) {
+        throw "Unable to resolve latest Node.js v22 release from nodejs.org"
+    }
+    return $latest22.version.TrimStart("v")
+}
+
+function Install-NodeViaWinget {
+    $hasWinget = Get-Command winget -ErrorAction SilentlyContinue
+    if (-not $hasWinget) {
+        return $false
+    }
+
+    Write-Host "Installing Node.js using winget (source: winget)..."
+    $wingetArgs = @(
+        "install",
+        "--id", "OpenJS.NodeJS.LTS",
+        "--source", "winget",
+        "--exact",
+        "--accept-source-agreements",
+        "--accept-package-agreements"
+    )
+
+    winget @wingetArgs
     if ($LASTEXITCODE -eq 0) {
-        Write-Host "Node.js installed successfully!"
-        exit 0
+        return $true
+    }
+
+    Write-Host "winget install failed (exit code: $LASTEXITCODE). Refreshing sources and retrying..."
+    winget source update winget
+    if ($LASTEXITCODE -ne 0) {
+        winget source reset --force
+    }
+    winget @wingetArgs
+    return ($LASTEXITCODE -eq 0)
+}
+
+function Install-NodeViaMsi {
+    try {
+        $version = Resolve-LatestNode22Version
+        $arch = Get-NodeArchToken
+        $msiUrl = "https://nodejs.org/dist/v$version/node-v$version-$arch.msi"
+        $msiPath = Join-Path $env:TEMP "node-v$version-$arch.msi"
+
+        Write-Host "Installing Node.js using official MSI fallback..."
+        Write-Host "MSI URL: $msiUrl"
+        Invoke-WebRequest -Uri $msiUrl -OutFile $msiPath -UseBasicParsing
+
+        $proc = Start-Process -FilePath "msiexec.exe" -ArgumentList "/i `"$msiPath`" /qn /norestart" -Wait -PassThru
+        if ($proc.ExitCode -eq 0 -or $proc.ExitCode -eq 3010) {
+            return $true
+        }
+
+        Write-Host "MSI installation failed (exit code: $($proc.ExitCode))"
+        return $false
+    } catch {
+        Write-Host "MSI fallback failed: $($_.Exception.Message)"
+        return $false
     }
 }
 
-# Fallback: Use fnm (Fast Node Manager)
-Write-Host "Attempting to install Node.js using fnm..."
-$fnmInstallScript = "irm https://fnm.vercel.app/install.ps1 | iex"
-Invoke-Expression $fnmInstallScript
+function Install-NodePortable {
+    try {
+        $version = Resolve-LatestNode22Version
+        $arch = Get-NodeArchToken
+        $zipUrl = "https://nodejs.org/dist/v$version/node-v$version-win-$arch.zip"
+        $zipPath = Join-Path $env:TEMP "node-v$version-win-$arch.zip"
+        $extractRoot = Join-Path $env:TEMP "openclaw-node-$version-$arch"
+        $targetRoot = Join-Path $env:LOCALAPPDATA "Programs\OpenClaw\nodejs"
+        $expandedDir = Join-Path $extractRoot "node-v$version-win-$arch"
 
-# Configure fnm environment
-$env:FNM_DIR = "$env:USERPROFILE\.fnm"
-$env:Path = "$env:FNM_DIR;$env:Path"
+        Write-Host "Installing Node.js portable fallback to user profile..."
+        Write-Host "ZIP URL: $zipUrl"
 
-# Install Node.js 22
-fnm install 22
-fnm default 22
-fnm use 22
+        if (Test-Path $extractRoot) {
+            Remove-Item $extractRoot -Recurse -Force
+        }
 
-# Verify installation
-$nodeVersion = node --version 2>$null
-if ($nodeVersion) {
-    Write-Host "Node.js installed successfully: $nodeVersion"
-    exit 0
-} else {
-    Write-Host "Node.js installation failed"
-    exit 1
+        Invoke-WebRequest -Uri $zipUrl -OutFile $zipPath -UseBasicParsing
+        Expand-Archive -Path $zipPath -DestinationPath $extractRoot -Force
+
+        if (-not (Test-Path (Join-Path $expandedDir "node.exe"))) {
+            throw "Portable package unpack failed: node.exe not found"
+        }
+
+        if (Test-Path $targetRoot) {
+            Remove-Item $targetRoot -Recurse -Force
+        }
+        New-Item -ItemType Directory -Path $targetRoot -Force | Out-Null
+        Copy-Item -Path (Join-Path $expandedDir "*") -Destination $targetRoot -Recurse -Force
+
+        $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+        if (-not $userPath) { $userPath = "" }
+        $parts = $userPath -split ";" | Where-Object { $_ -and $_.Trim() -ne "" }
+        if (-not ($parts -contains $targetRoot)) {
+            $newPath = if ($parts.Count -gt 0) { ($parts + $targetRoot) -join ";" } else { $targetRoot }
+            [Environment]::SetEnvironmentVariable("Path", $newPath, "User")
+        }
+
+        $env:Path = "$targetRoot;$env:Path"
+        return $true
+    } catch {
+        Write-Host "Portable fallback failed: $($_.Exception.Message)"
+        return $false
+    }
 }
+
+function Install-NodeViaFnm {
+    try {
+        Write-Host "Attempting to install Node.js using fnm..."
+        $fnmInstallScript = "irm https://fnm.vercel.app/install.ps1 | iex"
+        Invoke-Expression $fnmInstallScript
+
+        $env:FNM_DIR = "$env:USERPROFILE\.fnm"
+        $env:Path = "$env:FNM_DIR;$env:Path"
+
+        fnm install 22
+        fnm default 22
+        fnm use 22
+
+        return $true
+    } catch {
+        Write-Host "fnm fallback failed: $($_.Exception.Message)"
+        return $false
+    }
+}
+
+if (Test-NodeInstalled) { exit 0 }
+
+if (Install-NodeViaWinget -and (Test-NodeInstalled)) {
+    Write-Host "Node.js installed successfully via winget"
+    exit 0
+}
+
+if (Install-NodeViaFnm -and (Test-NodeInstalled)) {
+    Write-Host "Node.js installed successfully via fnm"
+    exit 0
+}
+
+if (Install-NodeViaMsi -and (Test-NodeInstalled)) {
+    Write-Host "Node.js installed successfully via MSI fallback"
+    exit 0
+}
+
+if (Install-NodePortable -and (Test-NodeInstalled)) {
+    Write-Host "Node.js installed successfully via portable fallback"
+    exit 0
+}
+
+Write-Host "Node.js installation failed after all fallback methods."
+exit 1
 "#;
 
     match shell::run_powershell_output(script) {
@@ -1078,16 +1216,77 @@ Write-Host "    Node.js Installation Wizard" -ForegroundColor White
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
-# Check winget
+function Get-NodeArchToken {
+    if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64" -or $env:PROCESSOR_ARCHITEW6432 -eq "ARM64") {
+        return "arm64"
+    }
+    if ([Environment]::Is64BitOperatingSystem) {
+        return "x64"
+    }
+    return "x86"
+}
+
+function Resolve-LatestNode22Version {
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+    $index = Invoke-RestMethod -Uri "https://nodejs.org/dist/index.json" -UseBasicParsing
+    $latest22 = $index | Where-Object { $_.version -like "v22.*" } | Select-Object -First 1
+    if (-not $latest22) {
+        throw "Unable to resolve latest Node.js v22 release from nodejs.org"
+    }
+    return $latest22.version.TrimStart("v")
+}
+
+$installSuccess = $false
+
 $hasWinget = Get-Command winget -ErrorAction SilentlyContinue
 if ($hasWinget) {
-    Write-Host "Installing Node.js 22 using winget..." -ForegroundColor Yellow
-    winget install --id OpenJS.NodeJS.LTS --accept-source-agreements --accept-package-agreements
-} else {
+    Write-Host "Installing Node.js 22 using winget (source: winget)..." -ForegroundColor Yellow
+    winget install --id OpenJS.NodeJS.LTS --source winget --exact --accept-source-agreements --accept-package-agreements
+    if ($LASTEXITCODE -eq 0) {
+        $installSuccess = $true
+    } else {
+        Write-Host "winget install failed (exit code: $LASTEXITCODE), refreshing sources..." -ForegroundColor Yellow
+        winget source update winget
+        if ($LASTEXITCODE -ne 0) {
+            winget source reset --force
+        }
+        winget install --id OpenJS.NodeJS.LTS --source winget --exact --accept-source-agreements --accept-package-agreements
+        if ($LASTEXITCODE -eq 0) {
+            $installSuccess = $true
+        }
+    }
+}
+
+if (-not $installSuccess) {
+    Write-Host "Trying official Node.js MSI fallback..." -ForegroundColor Yellow
+    try {
+        $version = Resolve-LatestNode22Version
+        $arch = Get-NodeArchToken
+        $msiUrl = "https://nodejs.org/dist/v$version/node-v$version-$arch.msi"
+        $msiPath = Join-Path $env:TEMP "node-v$version-$arch.msi"
+
+        Invoke-WebRequest -Uri $msiUrl -OutFile $msiPath -UseBasicParsing
+        $proc = Start-Process -FilePath "msiexec.exe" -ArgumentList "/i `"$msiPath`" /qn /norestart" -Wait -PassThru
+        if ($proc.ExitCode -eq 0 -or $proc.ExitCode -eq 3010) {
+            $installSuccess = $true
+        } else {
+            Write-Host "MSI install failed (exit code: $($proc.ExitCode))" -ForegroundColor Red
+        }
+    } catch {
+        Write-Host "MSI fallback failed: $($_.Exception.Message)" -ForegroundColor Red
+    }
+}
+
+if (-not $installSuccess) {
     Write-Host "Please download and install Node.js from:" -ForegroundColor Yellow
     Write-Host "https://nodejs.org/en/download" -ForegroundColor Green
     Write-Host ""
     Start-Process "https://nodejs.org/en/download"
+} else {
+    $nodeVersion = node --version 2>$null
+    if ($nodeVersion) {
+        Write-Host "Installed Node.js: $nodeVersion" -ForegroundColor Green
+    }
 }
 
 Write-Host ""

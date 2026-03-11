@@ -3,11 +3,16 @@
 ## 作用范围
 
 这份文件是给后续代理/维护者使用的仓库工作说明。
-分析基于当前这个干净 clone：
+主体分析最初基于当前这个干净 clone：
 
 - 分支：`main`
 - 提交：`50b01c3`
 - 远程：`https://github.com/mazycc/openclaw-manager.git`
+
+后续已补充同步的关键变更：
+
+- `6477dba`
+  - Windows Node.js 自动安装改为 `winget -> fnm -> 官方 MSI -> 用户目录 portable` 多级回退
 
 本文重点说明：
 
@@ -32,6 +37,7 @@
 - 没有安装 `cargo`
 - 没有运行 `npm run tauri:dev`
 - 没有运行 `npm run tauri:build`
+- 没有在干净的 Windows 环境里实际跑过新的 Node.js 自动安装回退链路
 
 结论：
 
@@ -263,7 +269,7 @@ Manager 并没有重新实现 gateway 行为。
 
 ### 2. GUI 进程通常拿不到和终端完全一致的 PATH
 
-`src-tauri/src/utils/shell.rs` 里明确在处理 PATH 问题。
+`src-tauri/src/utils/shell.rs` 和 `src-tauri/src/commands/installer.rs` 里都明确在处理 PATH / 安装探测问题。
 
 它会扩展 PATH，并探测这些常见安装位置：
 
@@ -271,6 +277,7 @@ Manager 并没有重新实现 gateway 行为。
 - Node.js
 - nvm/fnm/volta/asdf/mise 路径
 - Windows 的 roaming npm/global 目录
+- Windows 用户目录下的 portable Node.js 回退安装路径：`%LOCALAPPDATA%\Programs\OpenClaw\nodejs`
 
 这是这个仓库非常关键的一个实现原则：
 
@@ -331,7 +338,8 @@ supervisor 会周期性重新检查 gateway 健康状态，并在检测到异常
 Installer 设计大致如下：
 
 - Node.js：
-  - Windows：优先 `winget`，再退回 `fnm`
+  - Windows：优先 `winget --source winget --exact`；失败时会刷新/重置 source 后重试，再依次退回 `fnm`、官方 Node.js MSI 静默安装、用户目录 portable 包安装
+  - Windows portable 回退会把 Node 解压到 `%LOCALAPPDATA%\Programs\OpenClaw\nodejs`，并把该目录写入用户级 PATH
   - macOS：使用 Homebrew
   - Linux：按发行版包管理器逻辑处理
 - OpenClaw：
@@ -777,6 +785,7 @@ workflow 依赖这些 secrets：
   - `installer.rs`
   - 各平台 shell 逻辑
   - 用户 PATH 假设
+  - Windows 下 `%LOCALAPPDATA%\Programs\OpenClaw\nodejs` 是否存在，以及用户级 PATH 是否已写入该目录
 - 排查发布问题时，优先看：
   - `.github/workflows/release.yml`
   - `src-tauri/tauri.conf.json`

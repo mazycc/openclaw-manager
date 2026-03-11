@@ -49,6 +49,12 @@ if (-not $openclawCmd -and $env:APPDATA) {
         $openclawCmd = $candidate
     }
 }
+if (-not $openclawCmd -and $env:LOCALAPPDATA) {
+    $candidate = Join-Path $env:LOCALAPPDATA 'Programs\OpenClaw\npm-global\openclaw.cmd'
+    if (Test-Path $candidate) {
+        $openclawCmd = $candidate
+    }
+}
 if (-not $openclawCmd) {
     $command = Get-Command openclaw -ErrorAction SilentlyContinue
     if ($command) {
@@ -1025,9 +1031,45 @@ if (-not $nodeVersion) {{
 }}
 
 Write-Host "Installing OpenClaw using npm..."
-npm install -g openclaw@latest --unsafe-perm
+$usedIgnoreScriptsFallback = $false
+npm install -g openclaw@latest
 if ($LASTEXITCODE -ne 0) {{
-    throw "npm install -g openclaw@latest failed with exit code $LASTEXITCODE"
+    $globalInstallExitCode = $LASTEXITCODE
+    Write-Warning "Global npm install failed with exit code $globalInstallExitCode. Retrying with user-local npm prefix..."
+
+    if (-not $env:LOCALAPPDATA) {{
+        throw "LOCALAPPDATA is unavailable, cannot run Windows user-local fallback install"
+    }}
+
+    $openclawPrefix = Join-Path $env:LOCALAPPDATA 'Programs\OpenClaw\npm-global'
+    New-Item -ItemType Directory -Force -Path $openclawPrefix | Out-Null
+
+    npm install -g openclaw@latest --prefix "$openclawPrefix"
+    if ($LASTEXITCODE -ne 0) {{
+        $localInstallExitCode = $LASTEXITCODE
+        Write-Warning "User-local npm install failed with exit code $localInstallExitCode. Retrying with --ignore-scripts..."
+        npm install -g openclaw@latest --prefix "$openclawPrefix" --ignore-scripts
+        if ($LASTEXITCODE -ne 0) {{
+            throw "OpenClaw install failed after retries (global=$globalInstallExitCode, local=$localInstallExitCode, ignoreScripts=$LASTEXITCODE)"
+        }}
+        $usedIgnoreScriptsFallback = $true
+    }}
+
+    $env:PATH = "$openclawPrefix;$env:APPDATA\npm;$env:PATH"
+    $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+    if ($userPath -notlike "*$openclawPrefix*") {{
+        if ([string]::IsNullOrWhiteSpace($userPath)) {{
+            $newPath = $openclawPrefix
+        }} else {{
+            $newPath = "$userPath;$openclawPrefix"
+        }}
+        [Environment]::SetEnvironmentVariable('Path', $newPath, 'User')
+        Write-Host "Added OpenClaw npm fallback directory to user PATH: $openclawPrefix"
+    }}
+}}
+
+if ($usedIgnoreScriptsFallback) {{
+    Write-Warning "Installed OpenClaw with --ignore-scripts fallback. Optional native modules may need manual rebuild later."
 }}
 
 {find_openclaw}
@@ -1059,11 +1101,23 @@ Write-Host "OpenClaw installed successfully: $openclawVersion"
                 })
             }
         }
-        Err(e) => Ok(InstallResult {
-            success: false,
-            message: "OpenClaw installation failed".to_string(),
-            error: Some(e),
-        }),
+        Err(e) => {
+            let lower = e.to_lowercase();
+            let message = if lower.contains("node-llama-cpp")
+                || lower.contains("3221225477")
+                || lower.contains("-1073741819")
+            {
+                "OpenClaw installation failed in native dependency setup. The app already retried a Windows fallback install. You can rerun later after checking antivirus/Windows build tools, or run: npm install -g openclaw@latest --prefix \"$env:LOCALAPPDATA\\Programs\\OpenClaw\\npm-global\" --ignore-scripts"
+            } else {
+                "OpenClaw installation failed"
+            };
+
+            Ok(InstallResult {
+                success: false,
+                message: message.to_string(),
+                error: Some(e),
+            })
+        }
     }
 }
 
@@ -1081,7 +1135,7 @@ if ! command -v node &> /dev/null; then
 fi
 
 echo "Installing OpenClaw using npm..."
-npm install -g openclaw@latest --unsafe-perm
+npm install -g openclaw@latest
 
 {find_openclaw}
 "$OPENCLAW_BIN" --version
@@ -1364,7 +1418,7 @@ Write-Host ""
 
 try {{
     Write-Host "Installing OpenClaw..." -ForegroundColor Yellow
-    npm install -g openclaw@latest --unsafe-perm
+    npm install -g openclaw@latest
     if ($LASTEXITCODE -ne 0) {{
         throw "npm install -g openclaw@latest failed with exit code $LASTEXITCODE"
     }}
@@ -1433,7 +1487,7 @@ echo ""
 {git_setup}
 
 echo "Installing OpenClaw..."
-npm install -g openclaw@latest --unsafe-perm
+npm install -g openclaw@latest
 
 {find_openclaw}
 
@@ -1486,7 +1540,7 @@ echo ""
 {git_setup}
 
 echo "Installing OpenClaw..."
-npm install -g openclaw@latest --unsafe-perm
+npm install -g openclaw@latest
 
 {find_openclaw}
 
@@ -1820,7 +1874,7 @@ if (-not $nodeVersion) {{
 }}
 
 Write-Host "Updating OpenClaw..."
-npm install -g openclaw@latest --unsafe-perm
+npm install -g openclaw@latest
 if ($LASTEXITCODE -ne 0) {{
     throw "npm install -g openclaw@latest failed with exit code $LASTEXITCODE"
 }}
@@ -1872,7 +1926,7 @@ set -e
 {git_setup}
 
 echo "Updating OpenClaw..."
-npm install -g openclaw@latest --unsafe-perm
+npm install -g openclaw@latest
 
 {find_openclaw}
 "$OPENCLAW_BIN" --version

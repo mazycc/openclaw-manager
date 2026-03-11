@@ -375,6 +375,11 @@ fn get_windows_openclaw_paths() -> Vec<String> {
     if let Some(home) = dirs::home_dir() {
         let npm_path = format!("{}\\AppData\\Roaming\\npm\\openclaw.cmd", home.display());
         paths.push(npm_path);
+        let openclaw_fallback_path = format!(
+            "{}\\AppData\\Local\\Programs\\OpenClaw\\npm-global\\openclaw.cmd",
+            home.display()
+        );
+        paths.push(openclaw_fallback_path);
     }
 
     // 3. nodejs in Program Files

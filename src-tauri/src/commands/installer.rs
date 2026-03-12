@@ -841,11 +841,12 @@ function Install-NodeViaLocalMsi {
 
     try {
         Write-Host "Installing Node.js from bundled MSI: $msiPath"
-        $proc = Start-Process -FilePath "msiexec.exe" -ArgumentList "/i `"$msiPath`" /qn /norestart" -Wait -PassThru
-        if ($proc.ExitCode -eq 0 -or $proc.ExitCode -eq 3010) {
+        & msiexec.exe /i $msiPath /qn /norestart
+        $msiExitCode = $LASTEXITCODE
+        if ($msiExitCode -eq 0 -or $msiExitCode -eq 3010) {
             return $true
         }
-        Write-Host "Bundled MSI installation failed (exit code: $($proc.ExitCode))"
+        Write-Host "Bundled MSI installation failed (exit code: $msiExitCode)"
         return $false
     } catch {
         Write-Host "Bundled MSI installation failed: $($_.Exception.Message)"
@@ -904,12 +905,13 @@ function Install-NodeViaMsi {
         Write-Host "MSI URL: $msiUrl"
         Invoke-WebRequest -Uri $msiUrl -OutFile $msiPath -UseBasicParsing
 
-        $proc = Start-Process -FilePath "msiexec.exe" -ArgumentList "/i `"$msiPath`" /qn /norestart" -Wait -PassThru
-        if ($proc.ExitCode -eq 0 -or $proc.ExitCode -eq 3010) {
+        & msiexec.exe /i $msiPath /qn /norestart
+        $msiExitCode = $LASTEXITCODE
+        if ($msiExitCode -eq 0 -or $msiExitCode -eq 3010) {
             return $true
         }
 
-        Write-Host "MSI installation failed (exit code: $($proc.ExitCode))"
+        Write-Host "MSI installation failed (exit code: $msiExitCode)"
         return $false
     } catch {
         Write-Host "MSI fallback failed: $($_.Exception.Message)"
@@ -1663,11 +1665,12 @@ if (-not $installSuccess) {
         $msiPath = Join-Path $env:TEMP "node-v$version-$arch.msi"
 
         Invoke-WebRequest -Uri $msiUrl -OutFile $msiPath -UseBasicParsing
-        $proc = Start-Process -FilePath "msiexec.exe" -ArgumentList "/i `"$msiPath`" /qn /norestart" -Wait -PassThru
-        if ($proc.ExitCode -eq 0 -or $proc.ExitCode -eq 3010) {
+        & msiexec.exe /i $msiPath /qn /norestart
+        $msiExitCode = $LASTEXITCODE
+        if ($msiExitCode -eq 0 -or $msiExitCode -eq 3010) {
             $installSuccess = $true
         } else {
-            Write-Host "MSI install failed (exit code: $($proc.ExitCode))" -ForegroundColor Red
+            Write-Host "MSI install failed (exit code: $msiExitCode)" -ForegroundColor Red
         }
     } catch {
         Write-Host "MSI fallback failed: $($_.Exception.Message)" -ForegroundColor Red

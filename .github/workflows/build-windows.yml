@@ -95,6 +95,16 @@ jobs:
           $version = (Get-Content package.json | ConvertFrom-Json).version
           "version=$version" >> $env:GITHUB_OUTPUT
 
+      - name: Inspect staged offline resources before Tauri build
+        shell: pwsh
+        run: |
+          Write-Host "Listing resources/offline/windows"
+          if (Test-Path "resources/offline/windows") {
+            Get-ChildItem -Recurse "resources/offline/windows" | Select-Object FullName, Length
+          } else {
+            Write-Host "resources/offline/windows is missing"
+          }
+
       - name: Build Windows installer
         run: npm run tauri:build -- --target x86_64-pc-windows-msvc --bundles nsis --config src-tauri/tauri.windows.manual.conf.json
 

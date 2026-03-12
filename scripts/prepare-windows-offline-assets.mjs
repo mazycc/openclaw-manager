@@ -432,6 +432,16 @@ async function copyFilesFlat(filePaths, targetDir) {
   }
 }
 
+async function copyFirstFileAs(filePaths, targetPath) {
+  const sourcePath = filePaths.find(Boolean);
+  if (!sourcePath || !(await pathExists(sourcePath))) {
+    return;
+  }
+
+  await ensureDir(path.dirname(targetPath));
+  await fs.copyFile(sourcePath, targetPath);
+}
+
 async function stagePreparedAssets(stageDir, assets) {
   const nodeTarget = path.join(stageDir, "node");
   const gitTarget = path.join(stageDir, "git");
@@ -449,6 +459,7 @@ async function stagePreparedAssets(stageDir, assets) {
   await copyFilesFlat(assets.node, nodeTarget);
   await copyFilesFlat(assets.git, gitTarget);
   await copyFilesFlat(assets.openclaw, openclawTarget);
+  await copyFirstFileAs(assets.openclaw, path.join(openclawTarget, "openclaw.tgz"));
 }
 
 async function summarizeGeneratedAssets(files) {

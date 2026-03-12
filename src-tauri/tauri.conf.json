@@ -37,7 +37,7 @@
     "resources": {
       "resources/offline/windows/node/*": "offline/windows/node/",
       "resources/offline/windows/git/*": "offline/windows/git/",
-      "resources/offline/windows/openclaw/*": "offline/windows/openclaw/"
+      "resources/offline/windows/openclaw/openclaw.tgz": "offline/windows/openclaw/openclaw.tgz"
     },
     "icon": [
       "icons/32x32.png",

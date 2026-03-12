@@ -1,7 +1,8 @@
 use crate::utils::{log_sanitizer, platform, shell};
 use log::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
-use tauri::command;
+use std::path::{Path, PathBuf};
+use tauri::{command, path::BaseDirectory, AppHandle, Manager};
 
 const POWERSHELL_GIT_HTTPS_SETUP: &str = r#"
 $gitConfig = Join-Path $env:TEMP 'openclaw-manager-git-install.conf'
@@ -84,6 +85,65 @@ if [ -z "$OPENCLAW_BIN" ]; then
     exit 1
 fi
 "#;
+
+// Bundled resource root for offline Windows installers:
+//   node/*.msi|*.zip, git/*.exe, openclaw/*.tgz
+const WINDOWS_OFFLINE_ASSETS_SUBDIR: &str = "offline/windows";
+
+fn powershell_single_quoted_path(path: &Path) -> String {
+    // Escape single quotes so path can be used in a PowerShell single-quoted string literal.
+    path.to_string_lossy().replace('\'', "''")
+}
+
+fn resolve_windows_offline_assets_root(app: &AppHandle) -> Option<PathBuf> {
+    if !platform::is_windows() {
+        return None;
+    }
+
+    if let Ok(custom_path) = std::env::var("OPENCLAW_MANAGER_OFFLINE_ASSETS_DIR") {
+        let candidate = PathBuf::from(custom_path);
+        if candidate.exists() {
+            info!(
+                "[Offline Assets] Using custom Windows offline assets path: {}",
+                candidate.display()
+            );
+            return Some(candidate);
+        }
+        warn!(
+            "[Offline Assets] OPENCLAW_MANAGER_OFFLINE_ASSETS_DIR is set but path does not exist: {}",
+            candidate.display()
+        );
+    }
+
+    if let Ok(resource_path) = app
+        .path()
+        .resolve(WINDOWS_OFFLINE_ASSETS_SUBDIR, BaseDirectory::Resource)
+    {
+        if resource_path.exists() {
+            info!(
+                "[Offline Assets] Using bundled Windows offline assets path: {}",
+                resource_path.display()
+            );
+            return Some(resource_path);
+        }
+    }
+
+    // Dev fallback: allow local testing before packaging.
+    let dev_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("resources")
+        .join("offline")
+        .join("windows");
+    if dev_path.exists() {
+        info!(
+            "[Offline Assets] Using local dev Windows offline assets path: {}",
+            dev_path.display()
+        );
+        return Some(dev_path);
+    }
+
+    info!("[Offline Assets] No Windows offline assets directory found, using online installation flow");
+    None
+}
 
 /// Environment check result
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -665,15 +725,16 @@ read -p "Press Enter to close this window..."
 
 /// Install Node.js
 #[command]
-pub async fn install_nodejs() -> Result<InstallResult, String> {
+pub async fn install_nodejs(app: AppHandle) -> Result<InstallResult, String> {
     info!("[Install Node.js] Starting Node.js installation...");
     let os = platform::get_os();
     info!("[Install Node.js] Detected operating system: {}", os);
+    let windows_offline_assets_root = resolve_windows_offline_assets_root(&app);
 
     let result = match os.as_str() {
         "windows" => {
             info!("[Install Node.js] Using Windows installation method...");
-            install_nodejs_windows().await
+            install_nodejs_windows(windows_offline_assets_root).await
         }
         "macos" => {
             info!("[Install Node.js] Using macOS installation method (Homebrew)...");
@@ -703,10 +764,14 @@ pub async fn install_nodejs() -> Result<InstallResult, String> {
 }
 
 /// Install Node.js on Windows
-async fn install_nodejs_windows() -> Result<InstallResult, String> {
-    // Use winget to install Node.js (built-in on Windows 10/11)
+async fn install_nodejs_windows(windows_offline_assets_root: Option<PathBuf>) -> Result<InstallResult, String> {
+    let offline_assets_root = windows_offline_assets_root
+        .as_deref()
+        .map(powershell_single_quoted_path)
+        .unwrap_or_default();
     let script = r#"
 $ErrorActionPreference = 'Stop'
+$offlineAssetsRoot = '__OPENCLAW_OFFLINE_ASSETS_ROOT__'
 
 function Test-NodeInstalled {
     $nodeVersion = node --version 2>$null
@@ -725,6 +790,67 @@ function Get-NodeArchToken {
         return "x64"
     }
     return "x86"
+}
+
+function Get-OfflineArchRegex {
+    $arch = Get-NodeArchToken
+    if ($arch -eq "arm64") {
+        return "(arm64|aarch64)"
+    }
+    if ($arch -eq "x86") {
+        return "(x86|32-bit)"
+    }
+    return "(x64|amd64|64-bit)"
+}
+
+function Resolve-OfflineNodeAsset {
+    param(
+        [Parameter(Mandatory = $true)][string]$Extension
+    )
+
+    if ([string]::IsNullOrWhiteSpace($offlineAssetsRoot)) {
+        return $null
+    }
+
+    $nodeDir = Join-Path $offlineAssetsRoot "node"
+    if (-not (Test-Path $nodeDir)) {
+        return $null
+    }
+
+    $regex = Get-OfflineArchRegex
+    $archMatch = Get-ChildItem -Path $nodeDir -File -Filter "*.$Extension" -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name.ToLowerInvariant() -match $regex } |
+        Sort-Object Name -Descending |
+        Select-Object -First 1
+    if ($archMatch) {
+        return $archMatch.FullName
+    }
+
+    $fallback = Get-ChildItem -Path $nodeDir -File -Filter "*.$Extension" -ErrorAction SilentlyContinue |
+        Sort-Object Name -Descending |
+        Select-Object -First 1
+    if ($fallback) {
+        return $fallback.FullName
+    }
+
+    return $null
+}
+
+function Install-NodeViaLocalMsi {
+    param([string]$msiPath)
+
+    try {
+        Write-Host "Installing Node.js from bundled MSI: $msiPath"
+        $proc = Start-Process -FilePath "msiexec.exe" -ArgumentList "/i `"$msiPath`" /qn /norestart" -Wait -PassThru
+        if ($proc.ExitCode -eq 0 -or $proc.ExitCode -eq 3010) {
+            return $true
+        }
+        Write-Host "Bundled MSI installation failed (exit code: $($proc.ExitCode))"
+        return $false
+    } catch {
+        Write-Host "Bundled MSI installation failed: $($_.Exception.Message)"
+        return $false
+    }
 }
 
 function Resolve-LatestNode22Version {
@@ -792,34 +918,46 @@ function Install-NodeViaMsi {
 }
 
 function Install-NodePortable {
-    try {
-        $version = Resolve-LatestNode22Version
-        $arch = Get-NodeArchToken
-        $zipUrl = "https://nodejs.org/dist/v$version/node-v$version-win-$arch.zip"
-        $zipPath = Join-Path $env:TEMP "node-v$version-win-$arch.zip"
-        $extractRoot = Join-Path $env:TEMP "openclaw-node-$version-$arch"
-        $targetRoot = Join-Path $env:LOCALAPPDATA "Programs\OpenClaw\nodejs"
-        $expandedDir = Join-Path $extractRoot "node-v$version-win-$arch"
+    param([string]$preDownloadedZip = "")
 
-        Write-Host "Installing Node.js portable fallback to user profile..."
-        Write-Host "ZIP URL: $zipUrl"
+    try {
+        $arch = Get-NodeArchToken
+        $extractRoot = Join-Path $env:TEMP ("openclaw-node-install-" + [Guid]::NewGuid().ToString("N"))
+        $targetRoot = Join-Path $env:LOCALAPPDATA "Programs\OpenClaw\nodejs"
+
+        if ([string]::IsNullOrWhiteSpace($env:LOCALAPPDATA)) {
+            throw "LOCALAPPDATA is unavailable, cannot install Node.js portable fallback"
+        }
+
+        if ($preDownloadedZip -and (Test-Path $preDownloadedZip)) {
+            $zipPath = $preDownloadedZip
+            Write-Host "Installing Node.js from bundled ZIP: $zipPath"
+        } else {
+            $version = Resolve-LatestNode22Version
+            $zipUrl = "https://nodejs.org/dist/v$version/node-v$version-win-$arch.zip"
+            $zipPath = Join-Path $env:TEMP "node-v$version-win-$arch.zip"
+            Write-Host "Installing Node.js portable fallback to user profile..."
+            Write-Host "ZIP URL: $zipUrl"
+            Invoke-WebRequest -Uri $zipUrl -OutFile $zipPath -UseBasicParsing
+        }
 
         if (Test-Path $extractRoot) {
             Remove-Item $extractRoot -Recurse -Force
         }
-
-        Invoke-WebRequest -Uri $zipUrl -OutFile $zipPath -UseBasicParsing
         Expand-Archive -Path $zipPath -DestinationPath $extractRoot -Force
 
-        if (-not (Test-Path (Join-Path $expandedDir "node.exe"))) {
-            throw "Portable package unpack failed: node.exe not found"
+        $expandedDir = Get-ChildItem -Path $extractRoot -Directory -ErrorAction SilentlyContinue |
+            Where-Object { Test-Path (Join-Path $_.FullName "node.exe") } |
+            Select-Object -First 1
+        if (-not $expandedDir) {
+            throw "Portable package unpack failed: node.exe not found after extraction"
         }
 
         if (Test-Path $targetRoot) {
             Remove-Item $targetRoot -Recurse -Force
         }
         New-Item -ItemType Directory -Path $targetRoot -Force | Out-Null
-        Copy-Item -Path (Join-Path $expandedDir "*") -Destination $targetRoot -Recurse -Force
+        Copy-Item -Path (Join-Path $expandedDir.FullName "*") -Destination $targetRoot -Recurse -Force
 
         $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
         if (-not $userPath) { $userPath = "" }
@@ -835,6 +973,30 @@ function Install-NodePortable {
         Write-Host "Portable fallback failed: $($_.Exception.Message)"
         return $false
     }
+}
+
+function Install-NodeFromOfflineAssets {
+    if ([string]::IsNullOrWhiteSpace($offlineAssetsRoot) -or -not (Test-Path $offlineAssetsRoot)) {
+        return $false
+    }
+
+    Write-Host "Trying bundled offline Node.js assets from: $offlineAssetsRoot"
+
+    $offlineMsi = Resolve-OfflineNodeAsset -Extension "msi"
+    if ($offlineMsi) {
+        if (Install-NodeViaLocalMsi -msiPath $offlineMsi) {
+            return $true
+        }
+    }
+
+    $offlineZip = Resolve-OfflineNodeAsset -Extension "zip"
+    if ($offlineZip) {
+        if (Install-NodePortable -preDownloadedZip $offlineZip) {
+            return $true
+        }
+    }
+
+    return $false
 }
 
 function Install-NodeViaFnm {
@@ -859,6 +1021,11 @@ function Install-NodeViaFnm {
 
 if (Test-NodeInstalled) { exit 0 }
 
+if (Install-NodeFromOfflineAssets -and (Test-NodeInstalled)) {
+    Write-Host "Node.js installed successfully via bundled offline assets"
+    exit 0
+}
+
 if (Install-NodeViaWinget -and (Test-NodeInstalled)) {
     Write-Host "Node.js installed successfully via winget"
     exit 0
@@ -881,9 +1048,10 @@ if (Install-NodePortable -and (Test-NodeInstalled)) {
 
 Write-Host "Node.js installation failed after all fallback methods."
 exit 1
-"#;
+"#
+    .replace("__OPENCLAW_OFFLINE_ASSETS_ROOT__", &offline_assets_root);
 
-    match shell::run_powershell_output(script) {
+    match shell::run_powershell_output(&script) {
         Ok(output) => {
             // Verify installation
             if get_node_version().is_some() {
@@ -992,15 +1160,16 @@ node --version
 
 /// Install OpenClaw
 #[command]
-pub async fn install_openclaw() -> Result<InstallResult, String> {
+pub async fn install_openclaw(app: AppHandle) -> Result<InstallResult, String> {
     info!("[Install OpenClaw] Starting OpenClaw installation...");
     let os = platform::get_os();
     info!("[Install OpenClaw] Detected operating system: {}", os);
+    let windows_offline_assets_root = resolve_windows_offline_assets_root(&app);
 
     let result = match os.as_str() {
         "windows" => {
             info!("[Install OpenClaw] Using Windows installation method...");
-            install_openclaw_windows().await
+            install_openclaw_windows(windows_offline_assets_root).await
         }
         _ => {
             info!("[Install OpenClaw] Using Unix installation method (npm)...");
@@ -1018,11 +1187,18 @@ pub async fn install_openclaw() -> Result<InstallResult, String> {
 }
 
 /// Install OpenClaw on Windows
-async fn install_openclaw_windows() -> Result<InstallResult, String> {
+async fn install_openclaw_windows(
+    windows_offline_assets_root: Option<PathBuf>,
+) -> Result<InstallResult, String> {
+    let offline_assets_root = windows_offline_assets_root
+        .as_deref()
+        .map(powershell_single_quoted_path)
+        .unwrap_or_default();
     let script = format!(
         r#"
 $ErrorActionPreference = 'Stop'
 {git_setup}
+$offlineAssetsRoot = '{offline_assets_root}'
 
 # Check Node.js
 $nodeVersion = node --version 2>$null
@@ -1030,29 +1206,170 @@ if (-not $nodeVersion) {{
     throw "Please install Node.js first"
 }}
 
-Write-Host "Installing OpenClaw using npm..."
-$usedIgnoreScriptsFallback = $false
-npm install -g openclaw@latest
-if ($LASTEXITCODE -ne 0) {{
+function Get-OfflineArchRegex {{
+    if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64" -or $env:PROCESSOR_ARCHITEW6432 -eq "ARM64") {{
+        return "(arm64|aarch64)"
+    }}
+    if ([Environment]::Is64BitOperatingSystem) {{
+        return "(x64|amd64|64-bit)"
+    }}
+    return "(x86|32-bit)"
+}}
+
+function Test-GitInstalled {{
+    $gitVersion = git --version 2>$null
+    return -not [string]::IsNullOrWhiteSpace($gitVersion)
+}}
+
+function Resolve-OfflineGitInstaller {{
+    if ([string]::IsNullOrWhiteSpace($offlineAssetsRoot)) {{
+        return $null
+    }}
+
+    $gitDir = Join-Path $offlineAssetsRoot "git"
+    if (-not (Test-Path $gitDir)) {{
+        return $null
+    }}
+
+    $regex = Get-OfflineArchRegex
+    $archMatch = Get-ChildItem -Path $gitDir -File -Filter "*.exe" -ErrorAction SilentlyContinue |
+        Where-Object {{ $_.Name.ToLowerInvariant() -match $regex }} |
+        Sort-Object Name -Descending |
+        Select-Object -First 1
+    if ($archMatch) {{
+        return $archMatch.FullName
+    }}
+
+    $fallback = Get-ChildItem -Path $gitDir -File -Filter "*.exe" -ErrorAction SilentlyContinue |
+        Sort-Object Name -Descending |
+        Select-Object -First 1
+    if ($fallback) {{
+        return $fallback.FullName
+    }}
+
+    return $null
+}}
+
+function Install-GitViaLocalInstaller {{
+    param([string]$installerPath)
+
+    try {{
+        Write-Host "Installing Git from bundled installer: $installerPath"
+        $proc = Start-Process -FilePath $installerPath -ArgumentList "/VERYSILENT /NORESTART /NOCANCEL /SP- /CLOSEAPPLICATIONS /RESTARTAPPLICATIONS" -Wait -PassThru
+        if ($proc.ExitCode -eq 0 -or $proc.ExitCode -eq 3010) {{
+            $env:PATH = "C:\Program Files\Git\cmd;C:\Program Files\Git\bin;$env:PATH"
+            return $true
+        }}
+        Write-Warning "Bundled Git installer failed (exit code: $($proc.ExitCode))"
+        return $false
+    }} catch {{
+        Write-Warning "Bundled Git installer failed: $($_.Exception.Message)"
+        return $false
+    }}
+}}
+
+function Install-GitViaWinget {{
+    $hasWinget = Get-Command winget -ErrorAction SilentlyContinue
+    if (-not $hasWinget) {{
+        return $false
+    }}
+
+    Write-Host "Installing Git via winget fallback..."
+    winget install --id Git.Git --source winget --exact --accept-source-agreements --accept-package-agreements
+    if ($LASTEXITCODE -eq 0) {{
+        return $true
+    }}
+
+    Write-Warning "winget Git install failed (exit code: $LASTEXITCODE), refreshing source and retrying..."
+    winget source update winget
+    if ($LASTEXITCODE -ne 0) {{
+        winget source reset --force
+    }}
+    winget install --id Git.Git --source winget --exact --accept-source-agreements --accept-package-agreements
+    return ($LASTEXITCODE -eq 0)
+}}
+
+function Ensure-GitAvailable {{
+    if (Test-GitInstalled) {{
+        return
+    }}
+
+    Write-Warning "Git is missing. Trying bundled offline Git installer first."
+    $offlineGitInstaller = Resolve-OfflineGitInstaller
+    if ($offlineGitInstaller) {{
+        if (Install-GitViaLocalInstaller -installerPath $offlineGitInstaller -and (Test-GitInstalled)) {{
+            Write-Host "Git installed successfully via bundled offline installer"
+            return
+        }}
+    }}
+
+    Write-Warning "Bundled Git install unavailable/failed. Trying winget fallback..."
+    if (Install-GitViaWinget -and (Test-GitInstalled)) {{
+        Write-Host "Git installed successfully via winget fallback"
+        return
+    }}
+
+    Write-Warning "Git installation did not complete. OpenClaw installation may fail if Git is required."
+}}
+
+function Resolve-OfflineOpenClawPackage {{
+    if ([string]::IsNullOrWhiteSpace($offlineAssetsRoot)) {{
+        return $null
+    }}
+
+    $pkgDir = Join-Path $offlineAssetsRoot "openclaw"
+    if (-not (Test-Path $pkgDir)) {{
+        return $null
+    }}
+
+    $primary = Get-ChildItem -Path $pkgDir -File -Filter "openclaw-*.tgz" -ErrorAction SilentlyContinue |
+        Sort-Object Name -Descending |
+        Select-Object -First 1
+    if ($primary) {{
+        return $primary.FullName
+    }}
+
+    $fallback = Get-ChildItem -Path $pkgDir -File -Filter "*.tgz" -ErrorAction SilentlyContinue |
+        Sort-Object Name -Descending |
+        Select-Object -First 1
+    if ($fallback) {{
+        return $fallback.FullName
+    }}
+
+    return $null
+}}
+
+$script:usedIgnoreScriptsFallback = $false
+function Install-OpenClawPackageWithFallback {{
+    param([Parameter(Mandatory = $true)][string]$packageSpec)
+
+    Write-Host "Installing OpenClaw package source: $packageSpec"
+    npm install -g "$packageSpec"
+    if ($LASTEXITCODE -eq 0) {{
+        return $true
+    }}
+
     $globalInstallExitCode = $LASTEXITCODE
     Write-Warning "Global npm install failed with exit code $globalInstallExitCode. Retrying with user-local npm prefix..."
 
     if (-not $env:LOCALAPPDATA) {{
-        throw "LOCALAPPDATA is unavailable, cannot run Windows user-local fallback install"
+        Write-Warning "LOCALAPPDATA is unavailable, cannot run Windows user-local fallback install"
+        return $false
     }}
 
     $openclawPrefix = Join-Path $env:LOCALAPPDATA 'Programs\OpenClaw\npm-global'
     New-Item -ItemType Directory -Force -Path $openclawPrefix | Out-Null
 
-    npm install -g openclaw@latest --prefix "$openclawPrefix"
+    npm install -g "$packageSpec" --prefix "$openclawPrefix"
     if ($LASTEXITCODE -ne 0) {{
         $localInstallExitCode = $LASTEXITCODE
         Write-Warning "User-local npm install failed with exit code $localInstallExitCode. Retrying with --ignore-scripts..."
-        npm install -g openclaw@latest --prefix "$openclawPrefix" --ignore-scripts
+        npm install -g "$packageSpec" --prefix "$openclawPrefix" --ignore-scripts
         if ($LASTEXITCODE -ne 0) {{
-            throw "OpenClaw install failed after retries (global=$globalInstallExitCode, local=$localInstallExitCode, ignoreScripts=$LASTEXITCODE)"
+            Write-Warning "Install source failed after retries (global=$globalInstallExitCode, local=$localInstallExitCode, ignoreScripts=$LASTEXITCODE)"
+            return $false
         }}
-        $usedIgnoreScriptsFallback = $true
+        $script:usedIgnoreScriptsFallback = $true
     }}
 
     $env:PATH = "$openclawPrefix;$env:APPDATA\npm;$env:PATH"
@@ -1066,9 +1383,34 @@ if ($LASTEXITCODE -ne 0) {{
         [Environment]::SetEnvironmentVariable('Path', $newPath, 'User')
         Write-Host "Added OpenClaw npm fallback directory to user PATH: $openclawPrefix"
     }}
+
+    return $true
 }}
 
-if ($usedIgnoreScriptsFallback) {{
+Ensure-GitAvailable
+
+$installSources = @()
+$offlineOpenClawPackage = Resolve-OfflineOpenClawPackage
+if ($offlineOpenClawPackage) {{
+    Write-Host "Detected bundled offline OpenClaw package: $offlineOpenClawPackage"
+    $installSources += $offlineOpenClawPackage
+}}
+$installSources += "openclaw@latest"
+
+Write-Host "Installing OpenClaw using npm..."
+$openclawInstalled = $false
+foreach ($source in $installSources) {{
+    if (Install-OpenClawPackageWithFallback -packageSpec $source) {{
+        $openclawInstalled = $true
+        break
+    }}
+}}
+
+if (-not $openclawInstalled) {{
+    throw "OpenClaw install failed after all offline/online retries."
+}}
+
+if ($script:usedIgnoreScriptsFallback) {{
     Write-Warning "Installed OpenClaw with --ignore-scripts fallback. Optional native modules may need manual rebuild later."
 }}
 
@@ -1082,6 +1424,7 @@ if ($LASTEXITCODE -ne 0 -or -not $openclawVersion) {{
 Write-Host "OpenClaw installed successfully: $openclawVersion"
 "#,
         git_setup = POWERSHELL_GIT_HTTPS_SETUP,
+        offline_assets_root = offline_assets_root,
         find_openclaw = POWERSHELL_FIND_OPENCLAW,
     );
 

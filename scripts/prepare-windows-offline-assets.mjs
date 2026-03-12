@@ -202,8 +202,16 @@ async function downloadFile(url, destinationPath, force = false, headers = {}) {
   }
 }
 
+function resolveCommand(command) {
+  if (process.platform === "win32" && command === "npm") {
+    return "npm.cmd";
+  }
+  return command;
+}
+
 function runCommand(command, args, options = {}) {
-  const result = spawnSync(command, args, {
+  const resolvedCommand = resolveCommand(command);
+  const result = spawnSync(resolvedCommand, args, {
     cwd: options.cwd || repoRoot,
     env: options.env || process.env,
     encoding: "utf8",

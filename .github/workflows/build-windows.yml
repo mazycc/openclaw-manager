@@ -2,6 +2,32 @@ name: Build Windows Installer
 
 on:
   workflow_dispatch:
+    inputs:
+      windows_offline_bundle:
+        description: "Prepare and bundle Windows offline assets"
+        required: false
+        type: boolean
+        default: true
+      windows_offline_architectures:
+        description: "Comma-separated architectures (x64,arm64,x86)"
+        required: false
+        type: string
+        default: "x64"
+      windows_offline_node_version:
+        description: "Node.js version (latest-22 or x.y.z)"
+        required: false
+        type: string
+        default: "latest-22"
+      windows_offline_git_version:
+        description: "Git for Windows version tag or latest"
+        required: false
+        type: string
+        default: "latest"
+      windows_offline_openclaw_version:
+        description: "OpenClaw npm version or latest"
+        required: false
+        type: string
+        default: "latest"
 
 permissions:
   contents: read
@@ -18,6 +44,36 @@ jobs:
         with:
           node-version: 22
           cache: npm
+
+      - name: Prepare optional Windows offline bundle assets
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OFFLINE_ENABLED: ${{ inputs.windows_offline_bundle }}
+          OFFLINE_ARCH: ${{ inputs.windows_offline_architectures }}
+          OFFLINE_NODE_VERSION: ${{ inputs.windows_offline_node_version }}
+          OFFLINE_GIT_VERSION: ${{ inputs.windows_offline_git_version }}
+          OFFLINE_OPENCLAW_VERSION: ${{ inputs.windows_offline_openclaw_version }}
+        run: |
+          $enabled = if ($env:OFFLINE_ENABLED) { $env:OFFLINE_ENABLED } else { "false" }
+          $enabled = $enabled.ToString().Trim().ToLowerInvariant()
+          if ($enabled -notin @("true", "1", "yes", "on")) {
+            Write-Host "Windows offline bundle disabled by workflow input."
+            exit 0
+          }
+
+          $arch = if ($env:OFFLINE_ARCH) { $env:OFFLINE_ARCH } else { "x64" }
+          $nodeVersion = if ($env:OFFLINE_NODE_VERSION) { $env:OFFLINE_NODE_VERSION } else { "latest-22" }
+          $gitVersion = if ($env:OFFLINE_GIT_VERSION) { $env:OFFLINE_GIT_VERSION } else { "latest" }
+          $openclawVersion = if ($env:OFFLINE_OPENCLAW_VERSION) { $env:OFFLINE_OPENCLAW_VERSION } else { "latest" }
+
+          node scripts/prepare-windows-offline-assets.mjs `
+            --output-dir offline-assets/windows `
+            --stage-dir src-tauri/resources/offline/windows `
+            --architectures "$arch" `
+            --node-version "$nodeVersion" `
+            --git-version "$gitVersion" `
+            --openclaw-version "$openclawVersion"
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable

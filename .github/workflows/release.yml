@@ -5,6 +5,32 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      windows_offline_bundle:
+        description: "Prepare and bundle Windows offline assets"
+        required: false
+        type: boolean
+        default: false
+      windows_offline_architectures:
+        description: "Comma-separated architectures (x64,arm64,x86)"
+        required: false
+        type: string
+        default: "x64"
+      windows_offline_node_version:
+        description: "Node.js version (latest-22 or x.y.z)"
+        required: false
+        type: string
+        default: "latest-22"
+      windows_offline_git_version:
+        description: "Git for Windows version tag or latest"
+        required: false
+        type: string
+        default: "latest"
+      windows_offline_openclaw_version:
+        description: "OpenClaw npm version or latest"
+        required: false
+        type: string
+        default: "latest"
 
 permissions:
   contents: write
@@ -93,6 +119,42 @@ jobs:
         with:
           node-version: 22
           cache: npm
+
+      - name: Prepare optional Windows offline bundle assets
+        if: matrix.platform == 'windows-latest'
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OFFLINE_BUNDLE_INPUT: ${{ github.event_name == 'workflow_dispatch' && inputs.windows_offline_bundle || '' }}
+          OFFLINE_BUNDLE_DEFAULT: ${{ vars.WINDOWS_OFFLINE_BUNDLE }}
+          OFFLINE_ARCH_INPUT: ${{ github.event_name == 'workflow_dispatch' && inputs.windows_offline_architectures || '' }}
+          OFFLINE_ARCH_DEFAULT: ${{ vars.WINDOWS_OFFLINE_ARCHITECTURES }}
+          OFFLINE_NODE_INPUT: ${{ github.event_name == 'workflow_dispatch' && inputs.windows_offline_node_version || '' }}
+          OFFLINE_NODE_DEFAULT: ${{ vars.WINDOWS_OFFLINE_NODE_VERSION }}
+          OFFLINE_GIT_INPUT: ${{ github.event_name == 'workflow_dispatch' && inputs.windows_offline_git_version || '' }}
+          OFFLINE_GIT_DEFAULT: ${{ vars.WINDOWS_OFFLINE_GIT_VERSION }}
+          OFFLINE_OPENCLAW_INPUT: ${{ github.event_name == 'workflow_dispatch' && inputs.windows_offline_openclaw_version || '' }}
+          OFFLINE_OPENCLAW_DEFAULT: ${{ vars.WINDOWS_OFFLINE_OPENCLAW_VERSION }}
+        run: |
+          $enabled = if ($env:OFFLINE_BUNDLE_INPUT) { $env:OFFLINE_BUNDLE_INPUT } elseif ($env:OFFLINE_BUNDLE_DEFAULT) { $env:OFFLINE_BUNDLE_DEFAULT } else { "false" }
+          $enabled = $enabled.ToString().Trim().ToLowerInvariant()
+          if ($enabled -notin @("true", "1", "yes", "on")) {
+            Write-Host "Windows offline bundle disabled. Set windows_offline_bundle=true (workflow input) or WINDOWS_OFFLINE_BUNDLE=true (repo variable) to enable."
+            exit 0
+          }
+
+          $arch = if ($env:OFFLINE_ARCH_INPUT) { $env:OFFLINE_ARCH_INPUT } elseif ($env:OFFLINE_ARCH_DEFAULT) { $env:OFFLINE_ARCH_DEFAULT } else { "x64" }
+          $nodeVersion = if ($env:OFFLINE_NODE_INPUT) { $env:OFFLINE_NODE_INPUT } elseif ($env:OFFLINE_NODE_DEFAULT) { $env:OFFLINE_NODE_DEFAULT } else { "latest-22" }
+          $gitVersion = if ($env:OFFLINE_GIT_INPUT) { $env:OFFLINE_GIT_INPUT } elseif ($env:OFFLINE_GIT_DEFAULT) { $env:OFFLINE_GIT_DEFAULT } else { "latest" }
+          $openclawVersion = if ($env:OFFLINE_OPENCLAW_INPUT) { $env:OFFLINE_OPENCLAW_INPUT } elseif ($env:OFFLINE_OPENCLAW_DEFAULT) { $env:OFFLINE_OPENCLAW_DEFAULT } else { "latest" }
+
+          node scripts/prepare-windows-offline-assets.mjs `
+            --output-dir offline-assets/windows `
+            --stage-dir src-tauri/resources/offline/windows `
+            --architectures "$arch" `
+            --node-version "$nodeVersion" `
+            --git-version "$gitVersion" `
+            --openclaw-version "$openclawVersion"
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable

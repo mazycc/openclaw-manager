@@ -28,3 +28,10 @@ npm-debug.log*
 # Tauri
 src-tauri/target/
 src-tauri/Cargo.lock
+
+# Optional offline installer assets (Windows)
+offline-assets/
+src-tauri/resources/offline/windows/node/*.msi
+src-tauri/resources/offline/windows/node/*.zip
+src-tauri/resources/offline/windows/git/*.exe
+src-tauri/resources/offline/windows/openclaw/*.tgz

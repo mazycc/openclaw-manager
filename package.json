@@ -11,7 +11,9 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build"
+    "tauri:build": "tauri build",
+    "offline:windows:prepare": "node scripts/prepare-windows-offline-assets.mjs",
+    "tauri:build:windows:offline": "npm run offline:windows:prepare && tauri build --target x86_64-pc-windows-msvc --bundles nsis --config src-tauri/tauri.windows.manual.conf.json"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.10.1",

@@ -54,3 +54,19 @@ git push origin v0.1.0
 ## Re-run a release manually
 
 Go to **Actions** → **Release** → **Run workflow** (top right) if you need to re-trigger without a new tag.
+
+### Optional: include Windows offline bundle assets
+
+When triggering `Release` or `Build Windows Installer`, you can enable `windows_offline_bundle=true` to auto-download/package:
+
+- Node.js offline MSI/ZIP
+- Git for Windows installer
+- OpenClaw npm tarball
+
+For tag-triggered releases, set repository variables (once) to avoid manual input each run:
+
+- `WINDOWS_OFFLINE_BUNDLE=true`
+- `WINDOWS_OFFLINE_ARCHITECTURES=x64`
+- `WINDOWS_OFFLINE_NODE_VERSION=latest-22`
+- `WINDOWS_OFFLINE_GIT_VERSION=latest`
+- `WINDOWS_OFFLINE_OPENCLAW_VERSION=latest`

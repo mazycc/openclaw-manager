@@ -134,6 +134,16 @@ npm run tauri:dev    # Launch in development mode (hot-reload)
 npm run tauri:build
 ```
 
+### Build Windows Offline Installer Bundle
+
+```bash
+# Download/package offline assets and stage into src-tauri/resources/offline/windows
+npm run offline:windows:prepare
+
+# Build NSIS installer with bundled offline assets
+npm run tauri:build:windows:offline
+```
+
 Output in `src-tauri/target/release/bundle/`:
 
 | Platform | Formats |

@@ -1,7 +1,7 @@
 # Windows Offline Bundle Assets
 
-This directory is the canonical bundle location for Windows offline install assets.
-Tauri packages everything under this folder into the app bundle (`bundle.resources`).
+This directory documents the canonical Windows offline asset layout.
+Tauri now bundles staged assets from the repo-root path `resources/offline/windows/` via `bundle.resources`, while this folder remains the reference layout for the installer logic.
 
 ## Expected layout
 

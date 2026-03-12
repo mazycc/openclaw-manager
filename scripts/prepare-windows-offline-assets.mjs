@@ -16,7 +16,7 @@ const supportedArchitectures = new Set(["x64", "arm64", "x86"]);
 
 const defaultOptions = {
   outputDir: path.join(repoRoot, "offline-assets", "windows"),
-  stageDir: path.join(repoRoot, "src-tauri", "resources", "offline", "windows"),
+  stageDir: path.join(repoRoot, "resources", "offline", "windows"),
   stage: true,
   force: false,
   nodeVersion: "latest-22",
@@ -33,7 +33,7 @@ Usage:
 
 Options:
   --output-dir <path>         Output root (default: offline-assets/windows)
-  --stage-dir <path>          Staging root (default: src-tauri/resources/offline/windows)
+  --stage-dir <path>          Staging root (default: resources/offline/windows)
   --no-stage                  Do not copy prepared assets into stage dir
   --force                     Re-download/re-pack even if files already exist
   --node-version <spec>       Node.js version or latest-22 (default: latest-22)

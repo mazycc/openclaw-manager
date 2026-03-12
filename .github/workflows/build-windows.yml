@@ -69,7 +69,7 @@ jobs:
 
           node scripts/prepare-windows-offline-assets.mjs `
             --output-dir offline-assets/windows `
-            --stage-dir src-tauri/resources/offline/windows `
+            --stage-dir resources/offline/windows `
             --architectures "$arch" `
             --node-version "$nodeVersion" `
             --git-version "$gitVersion" `

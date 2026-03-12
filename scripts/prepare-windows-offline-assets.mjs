@@ -202,21 +202,28 @@ async function downloadFile(url, destinationPath, force = false, headers = {}) {
   }
 }
 
-function resolveCommand(command) {
+function resolveCommand(command, options = {}) {
   if (process.platform === "win32" && command === "npm") {
-    return "npm.cmd";
+    return {
+      command,
+      shell: options.shell ?? true,
+    };
   }
-  return command;
+
+  return {
+    command,
+    shell: options.shell ?? false,
+  };
 }
 
 function runCommand(command, args, options = {}) {
-  const resolvedCommand = resolveCommand(command);
-  const result = spawnSync(resolvedCommand, args, {
+  const resolved = resolveCommand(command, options);
+  const result = spawnSync(resolved.command, args, {
     cwd: options.cwd || repoRoot,
     env: options.env || process.env,
     encoding: "utf8",
     stdio: options.stdio || ["ignore", "pipe", "pipe"],
-    shell: options.shell || false,
+    shell: resolved.shell,
   });
 
   if (result.error) {

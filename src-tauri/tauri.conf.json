@@ -35,7 +35,7 @@
     "active": true,
     "targets": "all",
     "resources": [
-      "resources/offline/windows/**"
+      "src-tauri/resources/offline/windows/**"
     ],
     "icon": [
       "icons/32x32.png",

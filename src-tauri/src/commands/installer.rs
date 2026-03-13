@@ -1679,9 +1679,9 @@ pub async fn open_install_terminal(install_type: String) -> Result<String, Strin
 /// Open terminal to install Node.js
 async fn open_nodejs_install_terminal() -> Result<String, String> {
     if platform::is_windows() {
-        // Windows: Open PowerShell to execute installation
-        let script = r#"
-Start-Process powershell -ArgumentList '-NoExit', '-Command', '
+        // Windows: Open elevated PowerShell and run a real .ps1 file to avoid nested quote loss
+        let terminal_script = r#"
+$ErrorActionPreference = 'Stop'
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "    Node.js Installation Wizard" -ForegroundColor White
 Write-Host "========================================" -ForegroundColor Cyan
@@ -1765,9 +1765,18 @@ Write-Host ""
 Write-Host "Please restart OpenClaw小白安装工具 after installation" -ForegroundColor Green
 Write-Host ""
 Read-Host "Press Enter to close this window"
-' -Verb RunAs
 "#;
-        shell::run_powershell_output(script)?;
+        let launcher_script = format!(
+            r#"
+$scriptPath = Join-Path $env:TEMP 'openclaw_install_nodejs.ps1'
+@'
+{terminal_script}
+'@ | Set-Content -Path $scriptPath -Encoding UTF8
+Start-Process powershell -ArgumentList '-NoExit', '-ExecutionPolicy', 'Bypass', '-File', $scriptPath -Verb RunAs
+"#,
+            terminal_script = terminal_script,
+        );
+        shell::run_powershell_output(&launcher_script)?;
         Ok("Installation terminal opened".to_string())
     } else if platform::is_macos() {
         // macOS: Open Terminal.app

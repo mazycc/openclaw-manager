@@ -375,14 +375,20 @@ async function prepareOpenClawAsset(options, openclawDir) {
   const resolvedVersion = resolveOpenClawVersion(options.openclawVersion);
   const tarballName = `openclaw-${resolvedVersion}.tgz`;
   const tarballPath = path.join(openclawDir, tarballName);
+  const npmCacheDir = path.join(openclawDir, "npm-cache");
 
-  if (!options.force && (await pathExists(tarballPath))) {
+  if (!options.force && (await pathExists(tarballPath)) && (await pathExists(npmCacheDir))) {
     log(`Reuse existing file: ${path.relative(repoRoot, tarballPath)}`);
+    log(`Reuse existing directory: ${path.relative(repoRoot, npmCacheDir)}`);
     return {
       version: resolvedVersion,
       files: [tarballPath],
+      cacheDir: npmCacheDir,
     };
   }
+
+  await fs.rm(npmCacheDir, { recursive: true, force: true });
+  await ensureDir(npmCacheDir);
 
   log(`Packing OpenClaw npm tarball for version ${resolvedVersion}`);
   runCommand("npm", ["pack", `openclaw@${resolvedVersion}`, "--pack-destination", openclawDir, "--silent"]);
@@ -391,9 +397,34 @@ async function prepareOpenClawAsset(options, openclawDir) {
     throw new Error(`Expected tarball not found after npm pack: ${tarballPath}`);
   }
 
+  const tempInstallRoot = await fs.mkdtemp(path.join(options.outputDir, "openclaw-cache-"));
+  try {
+    await fs.writeFile(
+      path.join(tempInstallRoot, "package.json"),
+      `${JSON.stringify({
+        name: "openclaw-offline-cache-builder",
+        private: true,
+        dependencies: {
+          openclaw: resolvedVersion,
+        },
+      }, null, 2)}\n`,
+      "utf8",
+    );
+
+    log(`Warming npm cache for OpenClaw ${resolvedVersion}`);
+    runCommand(
+      "npm",
+      ["install", "--ignore-scripts", "--cache", npmCacheDir, "--prefer-online", "--no-package-lock"],
+      { cwd: tempInstallRoot },
+    );
+  } finally {
+    await fs.rm(tempInstallRoot, { recursive: true, force: true });
+  }
+
   return {
     version: resolvedVersion,
     files: [tarballPath],
+    cacheDir: npmCacheDir,
   };
 }
 
@@ -442,10 +473,21 @@ async function copyFirstFileAs(filePaths, targetPath) {
   await fs.copyFile(sourcePath, targetPath);
 }
 
+async function copyDirectory(sourceDir, targetDir) {
+  if (!(await pathExists(sourceDir))) {
+    return;
+  }
+
+  await fs.rm(targetDir, { recursive: true, force: true });
+  await ensureDir(path.dirname(targetDir));
+  await fs.cp(sourceDir, targetDir, { recursive: true });
+}
+
 async function stagePreparedAssets(stageDir, assets) {
   const nodeTarget = path.join(stageDir, "node");
   const gitTarget = path.join(stageDir, "git");
   const openclawTarget = path.join(stageDir, "openclaw");
+  const openclawCacheTarget = path.join(openclawTarget, "npm-cache");
 
   await ensureDir(stageDir);
   await ensureDir(nodeTarget);
@@ -460,6 +502,7 @@ async function stagePreparedAssets(stageDir, assets) {
   await copyFilesFlat(assets.git, gitTarget);
   await copyFilesFlat(assets.openclaw, openclawTarget);
   await copyFirstFileAs(assets.openclaw, path.join(openclawTarget, "openclaw.tgz"));
+  await copyDirectory(assets.openclawCacheDir, openclawCacheTarget);
 }
 
 async function summarizeGeneratedAssets(files) {
@@ -499,6 +542,7 @@ async function main() {
       node: nodeAssets.files,
       git: gitAssets.files,
       openclaw: openclawAssets.files,
+      openclawCacheDir: openclawAssets.cacheDir,
     });
     log(`Staged assets into: ${path.relative(repoRoot, options.stageDir)}`);
   } else {

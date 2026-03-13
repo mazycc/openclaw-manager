@@ -37,7 +37,12 @@
     "resources": {
       "../resources/offline/windows/node/*": "offline/windows/node/",
       "../resources/offline/windows/git/*": "offline/windows/git/",
-      "../resources/offline/windows/openclaw/openclaw.tgz": "offline/windows/openclaw/openclaw.tgz"
+      "../resources/offline/windows/openclaw/openclaw.tgz": "offline/windows/openclaw/openclaw.tgz",
+      "../resources/offline/windows/openclaw/npm-cache/**/*": "offline/windows/openclaw/npm-cache/",
+      "resources/offline/windows/node/*": "offline/windows/node/",
+      "resources/offline/windows/git/*": "offline/windows/git/",
+      "resources/offline/windows/openclaw/openclaw.tgz": "offline/windows/openclaw/openclaw.tgz",
+      "resources/offline/windows/openclaw/npm-cache/**/*": "offline/windows/openclaw/npm-cache/"
     },
     "icon": [
       "icons/32x32.png",

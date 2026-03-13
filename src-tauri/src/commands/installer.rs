@@ -1341,14 +1341,47 @@ function Resolve-OfflineOpenClawPackage {{
     return $null
 }}
 
+function Resolve-OfflineOpenClawCache {{
+    if ([string]::IsNullOrWhiteSpace($offlineAssetsRoot)) {{
+        return $null
+    }}
+
+    $cacheDir = Join-Path $offlineAssetsRoot "openclaw\npm-cache"
+    if (-not (Test-Path $cacheDir)) {{
+        return $null
+    }}
+
+    $cacheEntries = Get-ChildItem -Path $cacheDir -Force -ErrorAction SilentlyContinue
+    if (-not $cacheEntries) {{
+        return $null
+    }}
+
+    return $cacheDir
+}}
+
 $script:usedIgnoreScriptsFallback = $false
 function Install-OpenClawPackageWithFallback {{
-    param([Parameter(Mandatory = $true)][string]$packageSpec)
+    param(
+        [Parameter(Mandatory = $true)][string]$packageSpec,
+        [string]$offlineCache = $null
+    )
 
-    Write-Host "Installing OpenClaw package source: $packageSpec"
-    npm install -g "$packageSpec"
-    if ($LASTEXITCODE -eq 0) {{
-        return $true
+    $installArgs = @("install", "-g", "$packageSpec")
+    $isOfflinePackage = $packageSpec -like "*.tgz"
+    if ($isOfflinePackage -and -not [string]::IsNullOrWhiteSpace($offlineCache)) {{
+        Write-Host "Installing OpenClaw package source with bundled npm cache: $packageSpec"
+        npm @installArgs --cache "$offlineCache" --offline
+        if ($LASTEXITCODE -eq 0) {{
+            return $true
+        }}
+
+        Write-Warning "Offline npm install failed with exit code $LASTEXITCODE."
+    }} else {{
+        Write-Host "Installing OpenClaw package source: $packageSpec"
+        npm @installArgs
+        if ($LASTEXITCODE -eq 0) {{
+            return $true
+        }}
     }}
 
     $globalInstallExitCode = $LASTEXITCODE
@@ -1362,11 +1395,19 @@ function Install-OpenClawPackageWithFallback {{
     $openclawPrefix = Join-Path $env:LOCALAPPDATA 'Programs\OpenClaw\npm-global'
     New-Item -ItemType Directory -Force -Path $openclawPrefix | Out-Null
 
-    npm install -g "$packageSpec" --prefix "$openclawPrefix"
+    if ($isOfflinePackage -and -not [string]::IsNullOrWhiteSpace($offlineCache)) {{
+        npm @installArgs --prefix "$openclawPrefix" --cache "$offlineCache" --offline
+    }} else {{
+        npm @installArgs --prefix "$openclawPrefix"
+    }}
     if ($LASTEXITCODE -ne 0) {{
         $localInstallExitCode = $LASTEXITCODE
         Write-Warning "User-local npm install failed with exit code $localInstallExitCode. Retrying with --ignore-scripts..."
-        npm install -g "$packageSpec" --prefix "$openclawPrefix" --ignore-scripts
+        if ($isOfflinePackage -and -not [string]::IsNullOrWhiteSpace($offlineCache)) {{
+            npm @installArgs --prefix "$openclawPrefix" --cache "$offlineCache" --offline --ignore-scripts
+        }} else {{
+            npm @installArgs --prefix "$openclawPrefix" --ignore-scripts
+        }}
         if ($LASTEXITCODE -ne 0) {{
             Write-Warning "Install source failed after retries (global=$globalInstallExitCode, local=$localInstallExitCode, ignoreScripts=$LASTEXITCODE)"
             return $false
@@ -1392,23 +1433,35 @@ function Install-OpenClawPackageWithFallback {{
 Ensure-GitAvailable
 
 $installSources = @()
+$offlineInstallEnforced = $false
 $offlineOpenClawPackage = Resolve-OfflineOpenClawPackage
+$offlineOpenClawCache = Resolve-OfflineOpenClawCache
 if ($offlineOpenClawPackage) {{
     Write-Host "Detected bundled offline OpenClaw package: $offlineOpenClawPackage"
-    $installSources += $offlineOpenClawPackage
+    if (-not $offlineOpenClawCache) {{
+        throw "Bundled offline OpenClaw npm cache is missing. Rebuild installer with openclaw/npm-cache assets."
+    }}
+    Write-Host "Detected bundled offline OpenClaw npm cache: $offlineOpenClawCache"
+    $offlineInstallEnforced = $true
+    $installSources += @{{ packageSpec = $offlineOpenClawPackage; offlineCache = $offlineOpenClawCache }}
 }}
-$installSources += "openclaw@latest"
+if (-not $offlineInstallEnforced) {{
+    $installSources += @{{ packageSpec = "openclaw@latest"; offlineCache = $null }}
+}}
 
 Write-Host "Installing OpenClaw using npm..."
 $openclawInstalled = $false
 foreach ($source in $installSources) {{
-    if (Install-OpenClawPackageWithFallback -packageSpec $source) {{
+    if (Install-OpenClawPackageWithFallback -packageSpec $source.packageSpec -offlineCache $source.offlineCache) {{
         $openclawInstalled = $true
         break
     }}
 }}
 
 if (-not $openclawInstalled) {{
+    if ($offlineInstallEnforced) {{
+        throw "OpenClaw offline install failed from bundled package/cache. Runtime online fallback is disabled."
+    }}
     throw "OpenClaw install failed after all offline/online retries."
 }}
 
@@ -2209,6 +2262,7 @@ pub async fn update_openclaw() -> Result<InstallResult, String> {
 async fn update_openclaw_windows() -> Result<InstallResult, String> {
     info!("[Update OpenClaw] Executing npm install -g openclaw@latest...");
 
+    let offline_assets_root = resolve_windows_offline_assets_root();
     let script = format!(
         r#"
 $ErrorActionPreference = 'Stop'
@@ -2219,11 +2273,85 @@ if (-not $nodeVersion) {{
     throw "Please install Node.js first"
 }}
 
-Write-Host "Updating OpenClaw..."
-npm install -g openclaw@latest
-if ($LASTEXITCODE -ne 0) {{
-    throw "npm install -g openclaw@latest failed with exit code $LASTEXITCODE"
+function Resolve-OfflineOpenClawPackage {{
+    if ([string]::IsNullOrWhiteSpace($offlineAssetsRoot)) {{
+        return $null
+    }}
+
+    $pkgDir = Join-Path $offlineAssetsRoot "openclaw"
+    if (-not (Test-Path $pkgDir)) {{
+        return $null
+    }}
+
+    $primary = Get-ChildItem -Path $pkgDir -File -Filter "openclaw-*.tgz" -ErrorAction SilentlyContinue |
+        Sort-Object Name -Descending |
+        Select-Object -First 1
+    if ($primary) {{
+        return $primary.FullName
+    }}
+
+    $fallback = Get-ChildItem -Path $pkgDir -File -Filter "*.tgz" -ErrorAction SilentlyContinue |
+        Sort-Object Name -Descending |
+        Select-Object -First 1
+    if ($fallback) {{
+        return $fallback.FullName
+    }}
+
+    return $null
 }}
+
+function Resolve-OfflineOpenClawCache {{
+    if ([string]::IsNullOrWhiteSpace($offlineAssetsRoot)) {{
+        return $null
+    }}
+
+    $cacheDir = Join-Path $offlineAssetsRoot "openclaw\npm-cache"
+    if (-not (Test-Path $cacheDir)) {{
+        return $null
+    }}
+
+    $cacheEntries = Get-ChildItem -Path $cacheDir -Force -ErrorAction SilentlyContinue
+    if (-not $cacheEntries) {{
+        return $null
+    }}
+
+    return $cacheDir
+}}
+
+function Install-OpenClawUpdateWithFallback {{
+    $offlinePackage = Resolve-OfflineOpenClawPackage
+    $offlineCache = Resolve-OfflineOpenClawCache
+
+    if ($offlinePackage) {{
+        Write-Host "Updating OpenClaw from bundled package: $offlinePackage"
+        if ($offlineCache) {{
+            npm install -g "$offlinePackage" --cache "$offlineCache" --offline
+            if ($LASTEXITCODE -eq 0) {{
+                return
+            }}
+
+            Write-Warning "Offline update failed with exit code $LASTEXITCODE. Retrying with --prefer-offline..."
+            npm install -g "$offlinePackage" --cache "$offlineCache" --prefer-offline
+            if ($LASTEXITCODE -eq 0) {{
+                return
+            }}
+        }}
+
+        Write-Warning "Bundled package update failed. Falling back to online update..."
+    }}
+
+    npm install -g openclaw@latest
+    if ($LASTEXITCODE -ne 0) {{
+        throw "npm install -g openclaw update failed with exit code $LASTEXITCODE"
+    }}
+}}
+
+$offlineAssetsRoot = @'
+{offline_assets_root}
+'@
+
+Write-Host "Updating OpenClaw..."
+Install-OpenClawUpdateWithFallback
 
 {find_openclaw}
 $openclawVersion = & $openclawCmd --version 2>$null
@@ -2235,6 +2363,7 @@ Write-Host $openclawVersion
 "#,
         git_setup = POWERSHELL_GIT_HTTPS_SETUP,
         find_openclaw = POWERSHELL_FIND_OPENCLAW,
+        offline_assets_root = offline_assets_root,
     );
 
     match shell::run_powershell_output(&script) {

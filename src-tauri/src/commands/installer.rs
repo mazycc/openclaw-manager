@@ -1196,11 +1196,26 @@ async fn install_openclaw_windows(
         .as_deref()
         .map(powershell_single_quoted_path)
         .unwrap_or_default();
+    let allow_online_openclaw_fallback = cfg!(debug_assertions)
+        || std::env::var("OPENCLAW_MANAGER_ALLOW_WINDOWS_ONLINE_OPENCLAW_INSTALL")
+            .map(|value| {
+                matches!(
+                    value.trim().to_ascii_lowercase().as_str(),
+                    "1" | "true" | "yes" | "on"
+                )
+            })
+            .unwrap_or(false);
+    let allow_online_openclaw_fallback_ps = if allow_online_openclaw_fallback {
+        "$true"
+    } else {
+        "$false"
+    };
     let script = format!(
         r#"
 $ErrorActionPreference = 'Stop'
 {git_setup}
 $offlineAssetsRoot = '{offline_assets_root}'
+$allowOnlineFallback = {allow_online_openclaw_fallback}
 
 # Check Node.js
 $nodeVersion = node --version 2>$null
@@ -1445,6 +1460,9 @@ if ($offlineOpenClawPackage) {{
     $offlineInstallEnforced = $true
     $installSources += @{{ packageSpec = $offlineOpenClawPackage; offlineCache = $offlineOpenClawCache }}
 }}
+if (-not $offlineInstallEnforced -and -not $allowOnlineFallback) {{
+    throw "Bundled offline OpenClaw package/cache not found. Runtime online fallback is disabled for this build."
+}}
 if (-not $offlineInstallEnforced) {{
     $installSources += @{{ packageSpec = "openclaw@latest"; offlineCache = $null }}
 }}
@@ -1480,6 +1498,7 @@ Write-Host "OpenClaw installed successfully: $openclawVersion"
 "#,
         git_setup = POWERSHELL_GIT_HTTPS_SETUP,
         offline_assets_root = offline_assets_root,
+        allow_online_openclaw_fallback = allow_online_openclaw_fallback_ps,
         find_openclaw = POWERSHELL_FIND_OPENCLAW,
     );
 
@@ -2229,7 +2248,7 @@ fn compare_versions(current: &str, latest: &str) -> bool {
 
 /// Update OpenClaw
 #[command]
-pub async fn update_openclaw() -> Result<InstallResult, String> {
+pub async fn update_openclaw(app: AppHandle) -> Result<InstallResult, String> {
     info!("[Update OpenClaw] Starting OpenClaw update...");
     let os = platform::get_os();
 
@@ -2241,7 +2260,8 @@ pub async fn update_openclaw() -> Result<InstallResult, String> {
     let result = match os.as_str() {
         "windows" => {
             info!("[Update OpenClaw] Using Windows update method...");
-            update_openclaw_windows().await
+            let windows_offline_assets_root = resolve_windows_offline_assets_root(&app);
+            update_openclaw_windows(windows_offline_assets_root).await
         }
         _ => {
             info!("[Update OpenClaw] Using Unix update method (npm)...");
@@ -2259,10 +2279,15 @@ pub async fn update_openclaw() -> Result<InstallResult, String> {
 }
 
 /// Update OpenClaw on Windows
-async fn update_openclaw_windows() -> Result<InstallResult, String> {
+async fn update_openclaw_windows(
+    windows_offline_assets_root: Option<PathBuf>,
+) -> Result<InstallResult, String> {
     info!("[Update OpenClaw] Executing npm install -g openclaw@latest...");
 
-    let offline_assets_root = resolve_windows_offline_assets_root();
+    let offline_assets_root = windows_offline_assets_root
+        .as_deref()
+        .map(powershell_single_quoted_path)
+        .unwrap_or_default();
     let script = format!(
         r#"
 $ErrorActionPreference = 'Stop'

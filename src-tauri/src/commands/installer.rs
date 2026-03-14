@@ -1053,7 +1053,7 @@ exit 1
 "#
     .replace("__OPENCLAW_OFFLINE_ASSETS_ROOT__", &offline_assets_root);
 
-    match shell::run_powershell_output(&script) {
+    match shell::run_powershell_file_output(&script) {
         Ok(output) => {
             // Verify installation
             if get_node_version().is_some() {
@@ -1502,7 +1502,7 @@ Write-Host "OpenClaw installed successfully: $openclawVersion"
         find_openclaw = POWERSHELL_FIND_OPENCLAW,
     );
 
-    match shell::run_powershell_output(&script) {
+    match shell::run_powershell_file_output(&script) {
         Ok(output) => {
             if get_openclaw_version().is_some() {
                 Ok(InstallResult {
@@ -2400,7 +2400,7 @@ Write-Host $openclawVersion
         offline_assets_root = offline_assets_root,
     );
 
-    match shell::run_powershell_output(&script) {
+    match shell::run_powershell_file_output(&script) {
         Ok(output) => {
             info!("[Update OpenClaw] npm output: {}", output);
 

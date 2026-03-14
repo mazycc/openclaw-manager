@@ -2,8 +2,11 @@ use crate::utils::file;
 use crate::utils::platform;
 use log::{debug, info, warn};
 use std::collections::HashMap;
+use std::fs;
 use std::io;
+use std::path::PathBuf;
 use std::process::{Command, Output, Stdio};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
@@ -201,26 +204,70 @@ pub fn run_powershell(script: &str) -> io::Result<Output> {
 /// Execute PowerShell command and get output (Windows)
 pub fn run_powershell_output(script: &str) -> Result<String, String> {
     match run_powershell(script) {
-        Ok(output) => {
-            if output.status.success() {
-                Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+        Ok(output) => powershell_output_to_result(output),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
+fn powershell_output_to_result(output: Output) -> Result<String, String> {
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        if stderr.is_empty() {
+            let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            if stdout.is_empty() {
+                Err(format!(
+                    "Command failed with exit code: {:?}",
+                    output.status.code()
+                ))
             } else {
-                let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
-                if stderr.is_empty() {
-                    let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
-                    if stdout.is_empty() {
-                        Err(format!(
-                            "Command failed with exit code: {:?}",
-                            output.status.code()
-                        ))
-                    } else {
-                        Err(stdout)
-                    }
-                } else {
-                    Err(stderr)
-                }
+                Err(stdout)
             }
+        } else {
+            Err(stderr)
         }
+    }
+}
+
+fn temp_powershell_script_path(prefix: &str) -> PathBuf {
+    let ts = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis();
+    std::env::temp_dir().join(format!("{}_{}_{}.ps1", prefix, std::process::id(), ts))
+}
+
+fn write_powershell_script_file(script: &str, prefix: &str) -> Result<PathBuf, String> {
+    let path = temp_powershell_script_path(prefix);
+    let mut bytes = Vec::with_capacity(script.len() + 3);
+    bytes.extend_from_slice(&[0xEF, 0xBB, 0xBF]);
+    bytes.extend_from_slice(script.as_bytes());
+    fs::write(&path, bytes).map_err(|e| e.to_string())?;
+    Ok(path)
+}
+
+pub fn run_powershell_file_output(script: &str) -> Result<String, String> {
+    let script_path = write_powershell_script_file(script, "openclaw_ps")?;
+    let output = (|| {
+        let mut cmd = Command::new("powershell");
+        cmd.args([
+            "-NoProfile",
+            "-NonInteractive",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            script_path.to_string_lossy().as_ref(),
+        ]);
+
+        #[cfg(windows)]
+        cmd.creation_flags(CREATE_NO_WINDOW);
+
+        cmd.output()
+    })();
+    let _ = fs::remove_file(&script_path);
+    match output {
+        Ok(output) => powershell_output_to_result(output),
         Err(e) => Err(e.to_string()),
     }
 }

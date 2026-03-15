@@ -336,6 +336,20 @@ fn get_node_version() -> Option<String> {
     }
 }
 
+fn wait_for_node_version(max_attempts: usize, delay: std::time::Duration) -> Option<String> {
+    for attempt in 0..max_attempts {
+        if let Some(version) = get_node_version() {
+            return Some(version);
+        }
+
+        if attempt + 1 < max_attempts {
+            std::thread::sleep(delay);
+        }
+    }
+
+    None
+}
+
 /// Get possible Node.js paths on Unix systems
 fn get_unix_node_paths() -> Vec<String> {
     let mut paths = Vec::new();
@@ -773,11 +787,90 @@ async fn install_nodejs_windows(windows_offline_assets_root: Option<PathBuf>) ->
 $ErrorActionPreference = 'Stop'
 $offlineAssetsRoot = '__OPENCLAW_OFFLINE_ASSETS_ROOT__'
 
+function Refresh-NodePath {
+    $pathParts = New-Object System.Collections.Generic.List[string]
+    foreach ($scope in @('Machine', 'User')) {
+        $scopePath = [Environment]::GetEnvironmentVariable('Path', $scope)
+        if (-not [string]::IsNullOrWhiteSpace($scopePath)) {
+            foreach ($part in ($scopePath -split ';')) {
+                if (-not [string]::IsNullOrWhiteSpace($part) -and -not $pathParts.Contains($part)) {
+                    $pathParts.Add($part)
+                }
+            }
+        }
+    }
+
+    foreach ($candidate in @(
+        (Join-Path $env:ProgramFiles 'nodejs'),
+        (Join-Path ${env:ProgramFiles(x86)} 'nodejs'),
+        (Join-Path $env:LOCALAPPDATA 'Programs\nodejs'),
+        (Join-Path $env:LOCALAPPDATA 'Programs\OpenClaw\nodejs')
+    )) {
+        if (-not [string]::IsNullOrWhiteSpace($candidate) -and (Test-Path (Join-Path $candidate 'node.exe')) -and -not $pathParts.Contains($candidate)) {
+            $pathParts.Insert(0, $candidate)
+        }
+    }
+
+    if ($pathParts.Count -gt 0) {
+        $env:Path = ($pathParts -join ';')
+    }
+}
+
+function Resolve-NodeCommand {
+    Refresh-NodePath
+
+    $command = Get-Command node -ErrorAction SilentlyContinue
+    if ($command) {
+        return $command.Source
+    }
+
+    foreach ($candidate in @(
+        (Join-Path $env:ProgramFiles 'nodejs\node.exe'),
+        (Join-Path ${env:ProgramFiles(x86)} 'nodejs\node.exe'),
+        (Join-Path $env:LOCALAPPDATA 'Programs\nodejs\node.exe'),
+        (Join-Path $env:LOCALAPPDATA 'Programs\OpenClaw\nodejs\node.exe')
+    )) {
+        if (-not [string]::IsNullOrWhiteSpace($candidate) -and (Test-Path $candidate)) {
+            return $candidate
+        }
+    }
+
+    return $null
+}
+
+function Wait-ForNodeCommand {
+    param(
+        [int]$MaxAttempts = 1,
+        [int]$DelayMilliseconds = 0
+    )
+
+    for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
+        $nodeCmd = Resolve-NodeCommand
+        if ($nodeCmd) {
+            return $nodeCmd
+        }
+
+        if ($DelayMilliseconds -gt 0 -and $attempt -lt $MaxAttempts) {
+            Start-Sleep -Milliseconds $DelayMilliseconds
+        }
+    }
+
+    return $null
+}
+
 function Test-NodeInstalled {
-    $nodeVersion = node --version 2>$null
-    if ($nodeVersion) {
-        Write-Host "Node.js is already installed: $nodeVersion"
-        return $true
+    param(
+        [int]$MaxAttempts = 1,
+        [int]$DelayMilliseconds = 0
+    )
+
+    $nodeCmd = Wait-ForNodeCommand -MaxAttempts $MaxAttempts -DelayMilliseconds $DelayMilliseconds
+    if ($nodeCmd) {
+        $nodeVersion = & $nodeCmd --version 2>$null
+        if ($nodeVersion) {
+            Write-Host "Node.js is already installed: $nodeVersion"
+            return $true
+        }
     }
     return $false
 }
@@ -1023,27 +1116,27 @@ function Install-NodeViaFnm {
 
 if (Test-NodeInstalled) { exit 0 }
 
-if (Install-NodeFromOfflineAssets -and (Test-NodeInstalled)) {
+if (Install-NodeFromOfflineAssets -and (Test-NodeInstalled -MaxAttempts 10 -DelayMilliseconds 500)) {
     Write-Host "Node.js installed successfully via bundled offline assets"
     exit 0
 }
 
-if (Install-NodeViaWinget -and (Test-NodeInstalled)) {
+if (Install-NodeViaWinget -and (Test-NodeInstalled -MaxAttempts 10 -DelayMilliseconds 500)) {
     Write-Host "Node.js installed successfully via winget"
     exit 0
 }
 
-if (Install-NodeViaFnm -and (Test-NodeInstalled)) {
+if (Install-NodeViaFnm -and (Test-NodeInstalled -MaxAttempts 10 -DelayMilliseconds 500)) {
     Write-Host "Node.js installed successfully via fnm"
     exit 0
 }
 
-if (Install-NodeViaMsi -and (Test-NodeInstalled)) {
+if (Install-NodeViaMsi -and (Test-NodeInstalled -MaxAttempts 10 -DelayMilliseconds 500)) {
     Write-Host "Node.js installed successfully via MSI fallback"
     exit 0
 }
 
-if (Install-NodePortable -and (Test-NodeInstalled)) {
+if (Install-NodePortable -and (Test-NodeInstalled -MaxAttempts 10 -DelayMilliseconds 500)) {
     Write-Host "Node.js installed successfully via portable fallback"
     exit 0
 }
@@ -1055,8 +1148,7 @@ exit 1
 
     match shell::run_powershell_file_output(&script) {
         Ok(output) => {
-            // Verify installation
-            if get_node_version().is_some() {
+            if wait_for_node_version(10, std::time::Duration::from_millis(500)).is_some() {
                 Ok(InstallResult {
                     success: true,
                     message: "Node.js installed successfully! Please restart the application for environment variables to take effect.".to_string(),
@@ -1687,6 +1779,77 @@ Write-Host "    Node.js Installation Wizard" -ForegroundColor White
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
+function Refresh-NodePath {
+    $pathParts = New-Object System.Collections.Generic.List[string]
+    foreach ($scope in @('Machine', 'User')) {
+        $scopePath = [Environment]::GetEnvironmentVariable('Path', $scope)
+        if (-not [string]::IsNullOrWhiteSpace($scopePath)) {
+            foreach ($part in ($scopePath -split ';')) {
+                if (-not [string]::IsNullOrWhiteSpace($part) -and -not $pathParts.Contains($part)) {
+                    $pathParts.Add($part)
+                }
+            }
+        }
+    }
+
+    foreach ($candidate in @(
+        (Join-Path $env:ProgramFiles 'nodejs'),
+        (Join-Path ${env:ProgramFiles(x86)} 'nodejs'),
+        (Join-Path $env:LOCALAPPDATA 'Programs\nodejs'),
+        (Join-Path $env:LOCALAPPDATA 'Programs\OpenClaw\nodejs')
+    )) {
+        if (-not [string]::IsNullOrWhiteSpace($candidate) -and (Test-Path (Join-Path $candidate 'node.exe')) -and -not $pathParts.Contains($candidate)) {
+            $pathParts.Insert(0, $candidate)
+        }
+    }
+
+    if ($pathParts.Count -gt 0) {
+        $env:Path = ($pathParts -join ';')
+    }
+}
+
+function Resolve-NodeCommand {
+    Refresh-NodePath
+
+    $command = Get-Command node -ErrorAction SilentlyContinue
+    if ($command) {
+        return $command.Source
+    }
+
+    foreach ($candidate in @(
+        (Join-Path $env:ProgramFiles 'nodejs\node.exe'),
+        (Join-Path ${env:ProgramFiles(x86)} 'nodejs\node.exe'),
+        (Join-Path $env:LOCALAPPDATA 'Programs\nodejs\node.exe'),
+        (Join-Path $env:LOCALAPPDATA 'Programs\OpenClaw\nodejs\node.exe')
+    )) {
+        if (-not [string]::IsNullOrWhiteSpace($candidate) -and (Test-Path $candidate)) {
+            return $candidate
+        }
+    }
+
+    return $null
+}
+
+function Wait-ForNodeCommand {
+    param(
+        [int]$MaxAttempts = 1,
+        [int]$DelayMilliseconds = 0
+    )
+
+    for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
+        $nodeCmd = Resolve-NodeCommand
+        if ($nodeCmd) {
+            return $nodeCmd
+        }
+
+        if ($DelayMilliseconds -gt 0 -and $attempt -lt $MaxAttempts) {
+            Start-Sleep -Milliseconds $DelayMilliseconds
+        }
+    }
+
+    return $null
+}
+
 function Get-NodeArchToken {
     if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64" -or $env:PROCESSOR_ARCHITEW6432 -eq "ARM64") {
         return "arm64"
@@ -1755,9 +1918,16 @@ if (-not $installSuccess) {
     Write-Host ""
     Start-Process "https://nodejs.org/en/download"
 } else {
-    $nodeVersion = node --version 2>$null
-    if ($nodeVersion) {
-        Write-Host "Installed Node.js: $nodeVersion" -ForegroundColor Green
+    $nodeCmd = Wait-ForNodeCommand -MaxAttempts 10 -DelayMilliseconds 500
+    if ($nodeCmd) {
+        $nodeVersion = & $nodeCmd --version 2>$null
+        if ($nodeVersion) {
+            Write-Host "Installed Node.js: $nodeVersion" -ForegroundColor Green
+            Write-Host "Node command: $nodeCmd" -ForegroundColor DarkGray
+        }
+    } else {
+        Write-Host "Node.js installed, but current PowerShell session could not locate node.exe yet." -ForegroundColor Yellow
+        Write-Host "Please reopen PowerShell or restart OpenClaw小白安装工具 after installation." -ForegroundColor Yellow
     }
 }
 
